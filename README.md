@@ -1,39 +1,35 @@
 NeuroTK: Dataset Validation for Neurology Brain Imaging
 
-Overview
-NeuroTK is an academic toolkit for dataset validation and quality assurance of neurology brain imaging data in NIfTI format. It exists to provide systematic QA prior to modeling, with a focus on reporting issues without modifying data.
+Motivation
+Neurology brain imaging datasets are heterogeneous and error-prone, with common issues in geometry, spacing, orientation, and annotations. These problems often surface late in the modeling pipeline, undermining reproducibility and interpretability. NeuroTK exists to surface these issues early, explicitly, and reproducibly.
 
-What NeuroTK Does
-- Validates NIfTI readability
-- Checks geometry, spacing, orientation
-- Detects missing labels
-- Reports dataset-level inconsistencies
-- Produces structured JSON reports
+Scope
+NeuroTK provides dataset-level and file-level validation with structural and geometric consistency checks, and assessment of annotation presence and integrity. The scope is dataset quality assurance prior to downstream analysis.
 
-What NeuroTK Does NOT Do
-- No preprocessing
-- No training
-- No inference
-- No automatic fixing of data
+What NeuroTK Provides
+- Validation of NIfTI readability and dimensionality
+- Inspection of voxel spacing, affine geometry, and orientation
+- Detection of missing, mismatched, or empty labels
+- Dataset-level consistency statistics (shape, spacing, orientation)
+- Structured, machine-readable JSON reports suitable for archiving and review
 
 Installation
 pip install neurotk
 
-Usage Example
+Usage
 neurotk validate --images imagesTr --labels labelsTr --out report.json
-Expected input consists of directories containing NIfTI files, with label filenames matching image filenames.
+imagesTr and labelsTr are flat directories of NIfTI files, and filenames must match exactly for image–label pairing. Validation completes and reports issues rather than failing early.
 
 Output
-NeuroTK emits a JSON report containing a dataset-level summary and per-file diagnostics for images and optional labels.
+NeuroTK produces a dataset-level summary, per-file diagnostics for images and optional labels, and explicit listings of detected issues. The output is designed for reproducibility, auditing and dataset documentation, and inclusion in publications, benchmarks, or grant materials.
 
 Citation
-If you use NeuroTK in your research, please cite it as follows.
+If you use NeuroTK in your research, please cite it as follows:
 
 @software{neurotk,
-  title        = {NeuroTK: Dataset Validation for Neurology Brain Imaging},
-  author       = {Sakshi Rathi},
-  email        = {rathi036@umn.edu},
-  year         = {2026},
-  url          = {https://github.com/SakshiRa/neurotk},
-  note         = {Open-source dataset validation toolkit for brain imaging}
+  title  = {NeuroTK: Dataset Validation for Neurology Brain Imaging},
+  author = {Sakshi Rathi},
+  year   = {2026},
+  url    = {https://github.com/SakshiRa/neurotk},
+  note   = {Open-source toolkit for dataset validation and quality assurance in neurology brain imaging}
 }
