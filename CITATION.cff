@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use NeuroTK in your research, please cite it as follows."
+title: "NeuroTK: Dataset Validation for Neurology Brain Imaging"
+type: software
+authors:
+  - given-names: Sakshi
+    family-names: Rathi
+    email: rathi036@umn.edu
+year: 2026
+doi: 10.5281/zenodo.18252017
+url: https://github.com/SakshiRa/neurotk
+license: Apache-2.0
+keywords:
+  - medical imaging
+  - neurology
+  - brain imaging
+  - dataset validation
+  - reproducibility
+  - 3D segmentation
+  - deep learning

@@ -8,7 +8,30 @@ version = "0.1.0"
 description = "Dataset validation toolkit for neurology brain imaging (NIfTI)"
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = ["numpy", "nibabel", "scipy", "matplotlib"]
+license = { text = "Apache-2.0" }
+
+authors = [
+  { name = "Sakshi Rathi", email = "rathi036@umn.edu" }
+]
+
+dependencies = [
+  "numpy",
+  "nibabel",
+  "scipy",
+  "matplotlib"
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Medical Science Apps.",
+  "License :: OSI Approved :: Apache Software License"
+]
+
+[project.urls]
+Homepage = "https://github.com/SakshiRa/neurotk"
+Source = "https://github.com/SakshiRa/neurotk"
+Issues = "https://github.com/SakshiRa/neurotk/issues"
 
 [project.scripts]
 neurotk = "neurotk.cli:main"

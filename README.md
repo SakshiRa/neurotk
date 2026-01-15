@@ -55,6 +55,7 @@ If you use NeuroTK in your research, please cite it as follows:
   title  = {NeuroTK: Dataset Validation for Neurology Brain Imaging},
   author = {Sakshi Rathi},
   year   = {2026},
+  doi    = {10.5281/zenodo.18252017},
   url    = {https://github.com/SakshiRa/neurotk},
   note   = {Open-source toolkit for dataset validation and quality assurance in neurology brain imaging}
 }
