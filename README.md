@@ -1,24 +1,5 @@
 [![DOI](https://zenodo.org/badge/1134680274.svg)](https://doi.org/10.5281/zenodo.18252017)
 
-## Zenodo DOI Setup for NeuroTK
-- Sign in to Zenodo via GitHub OAuth: https://zenodo.org/
-- Go to GitHub integration: https://zenodo.org/account/settings/github/
-- Enable repository archiving for: SakshiRa/neurotk
-- Open the Zenodo record draft created for the repo and verify metadata fields:
-  - Title: NeuroTK: Dataset Validation for Neurology Brain Imaging
-  - Creators: Sakshi Rathi
-  - Description: concise academic description of NeuroTK
-  - Upload type: Software
-  - License: Apache-2.0
-  - Keywords: medical imaging; neurology; brain imaging; dataset validation; reproducibility
-- Create a GitHub Release:
-  - Tag: v0.1.0
-  - Release title: NeuroTK v0.1.0
-  - Release notes: short summary of dataset validation functionality
-- After publishing the release, verify on Zenodo:
-  - A versioned DOI for v0.1.0 is minted
-  - A concept DOI for NeuroTK is minted
-  - The DOI resolves to the Zenodo software record for SakshiRa/neurotk
 
 # NeuroTK: Dataset Validation for Neurology Brain Imaging
 
