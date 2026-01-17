@@ -35,3 +35,6 @@ Issues = "https://github.com/SakshiRa/neurotk/issues"
 
 [project.scripts]
 neurotk = "neurotk.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["neurotk"]
