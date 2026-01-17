@@ -15,81 +15,114 @@ authors:
 affiliations:
   - name: University of Minnesota, United States
     index: 1
-date: 2026
+date: 9 October 2026
 bibliography: paper.bib
 ---
 
 # Summary
 
-NeuroTK is an open-source Python toolkit for dataset validation, quality
-assurance, and deterministic standardization of neurology brain imaging data
-stored in NIfTI format. The software is designed to identify and document
-structural, geometric, and annotation-related issues in imaging datasets prior
-to downstream analysis, benchmarking, or model development. NeuroTK provides
-file-level and dataset-level diagnostics, optional preprocessing for orientation
-and spacing standardization, and machine- and human-readable reports, enabling
-transparent and reproducible dataset auditing.
+NeuroTK is an open-source Python toolkit designed to help researchers and
+clinicians check the quality of brain imaging datasets before they are used in
+scientific studies. Brain imaging data, such as CT or MRI scans, are often
+collected from multiple sources and may contain hidden inconsistencies that can
+affect research results. NeuroTK provides automated checks to identify these
+issues early and produces clear reports that document dataset quality in a
+reproducible way.
+
+The software works directly on common medical imaging files and reports
+properties such as image geometry, voxel spacing, orientation consistency, and
+the presence of annotations. NeuroTK can also optionally standardize datasets in
+a controlled and auditable manner. By making dataset quality visible and
+documented, NeuroTK helps researchers avoid downstream errors and improves the
+transparency of imaging-based research.
 
 # Statement of need
 
-Neurology brain imaging datasets are frequently assembled from heterogeneous
-sources with differing acquisition protocols, scanners, reconstruction
-pipelines, and clinical workflows. As a result, datasets often contain subtle
-but critical inconsistencies such as mismatched voxel spacing, orientation
-discrepancies, malformed affine matrices, missing or partial annotations, and
-undocumented preprocessing. These issues are commonly discovered only at late
-stages of analysis, where they can invalidate results or complicate
-reproducibility.
+Brain imaging datasets used in neurology research are frequently heterogeneous.
+Differences in scanners, acquisition protocols, reconstruction pipelines, and
+clinical workflows often lead to inconsistencies in voxel spacing, orientation,
+affine matrices, and annotation completeness. These issues are typically
+discovered only after significant effort has been invested in preprocessing,
+model development, or analysis, at which point correcting them can be costly or
+impractical.
 
-Existing medical imaging software ecosystems primarily emphasize model training,
-inference, or image preprocessing under the assumption that input datasets are
-already clean and standardized. NeuroTK addresses this gap by providing a
-dedicated toolkit focused explicitly on dataset-level validation and controlled,
-auditable standardization. By surfacing dataset quality issues early and
-producing structured validation artifacts, NeuroTK supports reproducible
-research practices, facilitates reviewer and collaborator trust, and enables
-consistent benchmarking across studies.
+Most existing medical imaging software focuses on model training, inference, or
+image preprocessing, and generally assumes that input datasets are already
+well-formed and standardized. NeuroTK addresses a distinct gap by focusing
+explicitly on dataset validation and quality assurance as a first-class research
+task. The software is intended for researchers releasing datasets, conducting
+benchmarking studies, or preparing imaging data for reproducible analysis. By
+producing structured validation artifacts, NeuroTK enables transparent
+documentation of dataset quality and supports reviewer and collaborator
+confidence.
+
+# State of the field
+
+Several widely used medical imaging frameworks provide utilities for data
+loading and preprocessing, including MONAI, nnU-Net, and SimpleITK-based
+pipelines. These tools are primarily optimized for downstream modeling workflows
+and typically embed validation logic implicitly within preprocessing or training
+code. As a result, dataset quality checks are often ad hoc, undocumented, or
+tightly coupled to specific modeling assumptions.
+
+NeuroTK adopts a complementary approach by decoupling dataset validation from
+modeling and task-specific preprocessing. Rather than extending an existing
+training framework, NeuroTK provides a lightweight, standalone toolkit focused
+on explicit inspection, reporting, and controlled standardization. This design
+supports use cases such as dataset release audits, benchmarking pipelines, and
+cross-study comparisons where transparent documentation of dataset properties is
+critical. The decision to build a separate tool reflects the need for a
+model-agnostic, auditable solution that existing frameworks do not directly
+provide.
 
 # Software design
 
-NeuroTK is designed around three core principles: (1) deterministic behavior,
-(2) explicit separation between validation and transformation, and (3)
-auditability of all operations. The toolkit exposes a command-line interface and
-Python API that operate directly on directories of NIfTI files without modifying
-original data.
+NeuroTK is designed around three core principles: deterministic behavior,
+explicit separation of concerns, and auditability. The toolkit provides a command
+line interface and Python API that operate directly on directories of NIfTI
+files, without modifying original data.
 
-The validation component inspects image and label files to assess readability,
+The validation component inspects image and label files for readability,
 geometry, voxel spacing, orientation, affine consistency, and annotation
-presence, producing structured JSON reports and optional HTML summaries. The
-preprocessing component performs optional, explicitly requested
-standardization—limited to orientation normalization and voxel spacing
-resampling—while recording all transformations and metadata in reproducible
-reports. NeuroTK avoids heuristic preprocessing, modality-specific assumptions,
-and learning-based methods, ensuring that its outputs remain interpretable and
-suitable for documentation, auditing, and benchmarking workflows.
+presence. Results are aggregated into structured JSON reports and optional
+human-readable HTML summaries. The preprocessing component is optional and
+explicitly invoked by the user. It performs only orientation normalization and
+voxel spacing resampling, using deterministic methods and recording all
+transformations in machine-readable reports. NeuroTK deliberately avoids
+heuristic preprocessing, modality-specific assumptions, and learning-based
+methods in order to preserve interpretability and reproducibility.
 
 # Research impact statement
 
 NeuroTK is intended to function as research infrastructure for neurology brain
-imaging studies, dataset releases, and benchmarking efforts. By providing
-transparent dataset validation and auditable standardization, the software
-addresses a recurring pain point in neuroimaging research that is not fully
-covered by existing model-centric frameworks. NeuroTK is distributed openly via
-PyPI and archived with a permanent DOI, enabling citation, reuse, and
-independent evaluation. The toolkit is designed to support reproducible research
-pipelines, reviewer-facing documentation, and clinical research audits, and is
-applicable across imaging modalities and downstream tasks.
+imaging studies and dataset-centric workflows. The software is distributed via
+PyPI and archived with a permanent DOI, enabling citation and reuse. NeuroTK has
+been designed to integrate into automated pipelines, continuous integration
+systems, and dataset release processes, providing concrete quality assurance
+artifacts that can be included in supplementary materials or reviewer-facing
+documentation.
+
+Early adoption has focused on internal research workflows and benchmarking
+pipelines, where NeuroTK has been used to detect dataset inconsistencies prior to
+model development. The availability of structured validation reports, optional
+standardization, and human-readable summaries positions NeuroTK for broader
+adoption in reproducible neuroimaging research and educational settings.
 
 # AI usage disclosure
 
-Generative AI tools were used during the development of this project to assist with software engineering tasks and
-manuscript preparation. Specifically, large language models (ChatGPT, OpenAI GPT-5.x series, accessed via the ChatGPT
-interface) were used to assist with code scaffolding, refactoring, test generation, documentation drafting, and
-copy-editing of the manuscript text.
+Generative AI tools were used during the development of this project to assist
+with software engineering tasks and manuscript preparation. Specifically, large
+language models (ChatGPT, OpenAI GPT-5.x series) were used to assist with code
+scaffolding, refactoring, test generation, documentation drafting, and
+copy-editing of the manuscript text. All AI-assisted outputs were reviewed,
+edited, and validated by the author. The core software design, implementation,
+and scientific framing decisions were made by the author, who takes full
+responsibility for the correctness and integrity of the software and manuscript.
 
-All AI-assisted outputs were reviewed, edited, and validated by the human author. The core software design,
-architectural decisions, implementation details, validation logic, and scientific framing were determined and verified
-by the author. The author takes full responsibility for the correctness, originality, and integrity of the software and
-manuscript.
+# Acknowledgements
+
+The author acknowledges support from academic collaborators and open-source
+communities that provided feedback during development and testing of the
+software.
 
 # References
