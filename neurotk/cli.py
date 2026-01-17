@@ -1,4 +1,4 @@
-"""Command-line interface for dataset validation."""
+"""Command-line interface for NeuroTK."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .report import build_summary
 from .utils import nifti_stem
+from .preprocess import preprocess_dataset
 from .validate import validate_image, validate_label
 
 
@@ -29,16 +30,28 @@ def _build_label_index(label_files: List[Path]) -> Dict[str, Path]:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="neurotk validate")
-    parser.add_argument("--images", required=True, type=Path)
-    parser.add_argument("--labels", required=False, type=Path)
-    parser.add_argument("--out", required=True, type=Path)
-    parser.add_argument("--max-samples", required=False, type=int, default=None)
+    parser = argparse.ArgumentParser(prog="neurotk")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    validate_parser = subparsers.add_parser("validate")
+    validate_parser.add_argument("--images", required=True, type=Path)
+    validate_parser.add_argument("--labels", required=False, type=Path)
+    validate_parser.add_argument("--out", required=True, type=Path)
+    validate_parser.add_argument("--max-samples", required=False, type=int, default=None)
+
+    preprocess_parser = subparsers.add_parser("preprocess")
+    preprocess_parser.add_argument("--images", required=True, type=Path)
+    preprocess_parser.add_argument("--labels", required=False, type=Path)
+    preprocess_parser.add_argument("--out", required=True, type=Path)
+    preprocess_parser.add_argument("--spacing", required=True, type=float, nargs=3)
+    preprocess_parser.add_argument("--orientation", default="RAS")
+    preprocess_parser.add_argument("--dry-run", action="store_true")
+    preprocess_parser.add_argument("--copy-metadata", action="store_true")
+
     return parser.parse_args()
 
 
-def run() -> int:
-    args = _parse_args()
+def _run_validate(args: argparse.Namespace) -> int:
     images_dir: Path = args.images
     labels_dir: Optional[Path] = args.labels
 
@@ -124,6 +137,29 @@ def run() -> int:
 
     print("Validation complete")
     return 0
+
+
+def _run_preprocess(args: argparse.Namespace) -> int:
+    preprocess_dataset(
+        images_dir=args.images,
+        labels_dir=args.labels,
+        out_dir=args.out,
+        spacing=tuple(args.spacing),
+        orientation=args.orientation,
+        dry_run=args.dry_run,
+        copy_metadata=args.copy_metadata,
+    )
+    print("Preprocess complete")
+    return 0
+
+
+def run() -> int:
+    args = _parse_args()
+    if args.command == "validate":
+        return _run_validate(args)
+    if args.command == "preprocess":
+        return _run_preprocess(args)
+    raise SystemExit(f"Unknown command: {args.command}")
 
 
 def main() -> None:
