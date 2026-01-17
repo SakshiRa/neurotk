@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: University of Minnesota, United States
     index: 1
-date: 9 October 2026
+date: 16 January 2026
 bibliography: paper.bib
 ---
 
