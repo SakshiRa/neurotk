@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from .report import build_summary
+from .report_html import write_html_report
+from .report_text import render_summary_text
 from .utils import nifti_stem
 from .preprocess import preprocess_dataset
 from .validate import validate_image, validate_label
+from . import __version__
 
 
 def _is_nifti(path: Path) -> bool:
@@ -38,6 +43,8 @@ def _parse_args() -> argparse.Namespace:
     validate_parser.add_argument("--labels", required=False, type=Path)
     validate_parser.add_argument("--out", required=True, type=Path)
     validate_parser.add_argument("--max-samples", required=False, type=int, default=None)
+    validate_parser.add_argument("--html", required=False, type=Path)
+    validate_parser.add_argument("--summary-only", action="store_true")
 
     preprocess_parser = subparsers.add_parser("preprocess")
     preprocess_parser.add_argument("--images", required=True, type=Path)
@@ -129,11 +136,37 @@ def _run_validate(args: argparse.Namespace) -> int:
         files_with_issues=files_with_issues,
     )
 
-    report = {"summary": summary, "files": files_report, "warnings": warnings}
+    report = {
+        "summary": summary,
+        "files": files_report,
+        "warnings": warnings,
+        "meta": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "version": __version__,
+        },
+    }
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
+
+    if args.html is not None:
+        try:
+            write_html_report(report, args.html)
+        except Exception as exc:
+            print(
+                f"Warning: HTML report generation failed: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+
+    if args.summary_only:
+        try:
+            print(render_summary_text(report))
+        except Exception as exc:
+            print(
+                f"Warning: summary rendering failed: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
 
     print("Validation complete")
     return 0

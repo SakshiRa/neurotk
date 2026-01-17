@@ -1,0 +1,31 @@
+<!-- neurotk/web/templates/report.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroTK Report</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>Validation Report</h1>
+      <div class="actions">
+        <a class="link" href="/download/report.json">Download JSON</a>
+        <a class="link" href="/download/report.html">Download HTML</a>
+        {% if has_preprocess %}
+        <a class="link" href="/download/preprocess.zip">Download Preprocess Outputs</a>
+        {% endif %}
+        <a class="link" href="/">New Run</a>
+      </div>
+    </header>
+
+    <section class="card report-frame">
+      <div class="report-body">
+        {{ report_body | safe }}
+      </div>
+    </section>
+  </main>
+</body>
+</html>
