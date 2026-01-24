@@ -1,11 +1,11 @@
 :root {
   color-scheme: light;
-  --bg: #f5f6f8;
+  --bg: #ffffff;
   --card: #ffffff;
   --text: #1b1f24;
   --muted: #5a6472;
   --accent: #1f4f82;
-  --border: #e0e4ea;
+  --border: #e5e7eb;
 }
 
 * {
@@ -17,16 +17,17 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
+  line-height: 1.6;
 }
 
 .page {
-  max-width: 720px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 48px 24px 64px;
+  padding: 48px 24px 72px;
 }
 
 .hero {
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
 .eyebrow {
@@ -34,17 +35,41 @@ body {
   letter-spacing: 0.2em;
   font-size: 12px;
   color: var(--accent);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 h1 {
-  font-size: 28px;
+  font-size: 30px;
   margin: 0 0 12px;
 }
 
 .subtitle {
   color: var(--muted);
   margin: 0;
+  max-width: 720px;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-bottom: 36px;
+}
+
+.section h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.section li {
+  margin-bottom: 6px;
 }
 
 .card {
@@ -98,23 +123,4 @@ input[type="file"] {
   padding: 10px 18px;
   font-weight: 600;
   cursor: pointer;
-}
-
-.links {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 16px 0 24px;
-}
-
-.links a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.secondary {
-  display: inline-block;
-  color: var(--accent);
-  text-decoration: none;
-  margin-top: 12px;
 }

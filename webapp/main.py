@@ -168,3 +168,21 @@ def download(run_id: str, filename: str):
     if not path.exists():
         return PlainTextResponse("File not found", status_code=404)
     return FileResponse(path, filename=safe_name)
+
+
+@app.get("/view/{run_id}/report", response_class=HTMLResponse)
+def view_report(run_id: str) -> HTMLResponse:
+    report_path = OUTPUTS_DIR / run_id / "report.html"
+    if not report_path.exists():
+        return PlainTextResponse("Report not found", status_code=404)
+    html = report_path.read_text(encoding="utf-8")
+    header = (
+        "<div style=\"position:sticky;top:0;background:#ffffff;border-bottom:1px solid #e5e7eb;"
+        "padding:12px 20px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif;"
+        "font-size:14px;display:flex;gap:16px;z-index:10\">"
+        f"<a href=\"/\" style=\"color:#1f4f82;text-decoration:none;\">Back to landing</a>"
+        f"<a href=\"/download/{run_id}/report.html\" style=\"color:#1f4f82;text-decoration:none;\">Download HTML</a>"
+        f"<a href=\"/download/{run_id}/report.json\" style=\"color:#1f4f82;text-decoration:none;\">Download JSON</a>"
+        "</div>"
+    )
+    return HTMLResponse(content=header + html, status_code=200)

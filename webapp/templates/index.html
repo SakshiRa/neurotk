@@ -3,16 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NeuroTK Web</title>
+  <title>NeuroTK</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <main class="page">
     <header class="hero">
       <p class="eyebrow">NeuroTK</p>
-      <h1>Run validation and preprocessing from your browser</h1>
-      <p class="subtitle">Upload NIfTI datasets, run NeuroTK via the CLI, and download JSON + HTML reports.</p>
+      <h1>Dataset validation and preprocessing for NIfTI studies</h1>
+      <p class="subtitle">
+        NeuroTK surfaces dataset issues early, produces audit-ready reports, and optionally standardizes spacing
+        and orientation with deterministic preprocessing.
+      </p>
     </header>
+
+    <section class="content">
+      <div class="section">
+        <h2>What NeuroTK Does</h2>
+        <ul>
+          <li>Validate datasets for structure, spacing, and orientation issues</li>
+          <li>Generate JSON and HTML reports suitable for audit and review</li>
+          <li>Run deterministic preprocessing when requested</li>
+        </ul>
+      </div>
+      <div class="section">
+        <h2>What You Can Run Here</h2>
+        <ul>
+          <li>Validate only</li>
+          <li>Validate + preprocess</li>
+          <li>Download JSON and HTML reports</li>
+        </ul>
+      </div>
+    </section>
 
     <section class="card">
       <h2>Upload dataset</h2>

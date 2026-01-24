@@ -10,10 +10,11 @@
   <main class="page">
     <section class="card">
       <h1>Run complete</h1>
-      <p>Your reports are ready. Download the artifacts below.</p>
+      <p>Your reports are ready. View or download the artifacts below.</p>
       <div class="links">
-        <a href="/download/{{ run_id }}/report.json">Download JSON report</a>
+        <a href="/view/{{ run_id }}/report">View HTML report</a>
         <a href="/download/{{ run_id }}/report.html">Download HTML report</a>
+        <a href="/download/{{ run_id }}/report.json">Download JSON report</a>
       </div>
       <a class="secondary" href="/">Run again</a>
     </section>
