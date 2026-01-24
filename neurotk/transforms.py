@@ -6,7 +6,6 @@ from typing import Tuple
 
 import nibabel as nib
 import numpy as np
-from nibabel.affines import rescale_affine
 from scipy import ndimage
 
 
@@ -45,7 +44,7 @@ def resample_to_spacing(
     if any(z <= 0 for z in zoom_factors):
         raise ValueError("Invalid zoom factors for resampling")
     resampled = ndimage.zoom(data, zoom=zoom_factors, order=order, mode=mode)
-    new_affine = rescale_affine(
-        affine, data.shape, current_spacing, target_spacing
-    )
+    direction = affine[:3, :3] / np.asarray(current_spacing)
+    new_affine = affine.copy()
+    new_affine[:3, :3] = direction * np.asarray(target_spacing)
     return resampled, new_affine

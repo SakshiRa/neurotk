@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 from .report import build_summary
 from .report_html import write_html_report
 from .report_text import render_summary_text
+from .stats.image_stats import build_stats_summary
 from .utils import nifti_stem
 from .preprocess import preprocess_dataset
 from .validate import validate_image, validate_label
@@ -136,8 +137,11 @@ def _run_validate(args: argparse.Namespace) -> int:
         files_with_issues=files_with_issues,
     )
 
+    stats_summary = build_stats_summary(image_files)
+
     report = {
         "summary": summary,
+        "stats_summary": stats_summary,
         "files": files_report,
         "warnings": warnings,
         "meta": {
