@@ -41,6 +41,7 @@ def _sorted_files(files: Dict[str, Dict[str, object]]) -> List[Tuple[str, Dict[s
 
 def render_html_report(report: Dict[str, object]) -> str:
     summary = report.get("summary", {})
+    stats_summary = report.get("stats_summary", {})  # type: ignore[assignment]
     files: Dict[str, Dict[str, object]] = report.get("files", {})  # type: ignore[assignment]
     warnings: List[str] = report.get("warnings", [])  # type: ignore[assignment]
     meta: Dict[str, object] = report.get("meta", {})  # type: ignore[assignment]
@@ -104,6 +105,38 @@ def render_html_report(report: Dict[str, object]) -> str:
     if spacing_mean and spacing_std:
         spacing_text = _fmt_spacing(spacing_mean, spacing_std)
 
+    stats_rows = []
+    image_stats = stats_summary.get("image_stats", {}) if isinstance(stats_summary, dict) else {}
+
+    def _fmt_metric_value(value: object) -> str:
+        if value is None:
+            return "n/a"
+        if isinstance(value, list):
+            return "[" + ", ".join(str(v) for v in value) + "]"
+        return str(value)
+
+    def _row(metric: str, block: Dict[str, object]) -> None:
+        percentiles = block.get("percentiles", {}) if isinstance(block, dict) else {}
+        stats_rows.append(
+            "<tr>"
+            f"<td>{_escape(metric)}</td>"
+            f"<td>{_escape(_fmt_metric_value(block.get('min')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(block.get('max')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(block.get('mean')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(block.get('median')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(block.get('stdev')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(percentiles.get('p0_5')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(percentiles.get('p10')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(percentiles.get('p90')))}</td>"
+            f"<td>{_escape(_fmt_metric_value(percentiles.get('p99_5')))}</td>"
+            "</tr>"
+        )
+
+    for key in ["shape", "channels", "spacing", "size_mm", "intensity"]:
+        block = image_stats.get(key)
+        if isinstance(block, dict):
+            _row(key, block)
+
     files_table_body = (
         "".join(files_rows)
         if files_rows
@@ -113,6 +146,12 @@ def render_html_report(report: Dict[str, object]) -> str:
         "".join(warning_rows + issues_rows)
         if (warning_rows or issues_rows)
         else "<tr><td colspan=\"3\">No issues reported</td></tr>"
+    )
+
+    stats_table_body = (
+        "".join(stats_rows)
+        if stats_rows
+        else "<tr><td colspan=\\\"10\\\">No stats available</td></tr>"
     )
 
     html_doc = f"""<!DOCTYPE html>
@@ -222,8 +261,32 @@ def render_html_report(report: Dict[str, object]) -> str:
       <div class="summary-item"><span>Files with issues</span>{_escape(summary.get("files_with_issues", "unknown"))}</div>
       <div class="summary-item"><span>Orientation consistency</span>{_escape(_orientation_consistency(summary))}</div>
       <div class="summary-item"><span>Spacing mean ± std</span>{_escape(spacing_text)}</div>
+      <div class="summary-item"><span>Number of cases</span>{_escape(stats_summary.get("n_cases", "unknown") if isinstance(stats_summary, dict) else "unknown")}</div>
       <div class="summary-item"><span>Warnings</span>{_escape(", ".join(sorted(warnings)) if warnings else "none")}</div>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Image Stats</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Min</th>
+          <th>Max</th>
+          <th>Mean</th>
+          <th>Median</th>
+          <th>Stdev</th>
+          <th>P0.5</th>
+          <th>P10</th>
+          <th>P90</th>
+          <th>P99.5</th>
+        </tr>
+      </thead>
+      <tbody>
+        {stats_table_body}
+      </tbody>
+    </table>
   </div>
 
   <div class="card">

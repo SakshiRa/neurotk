@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroTK Results</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <h1>Run complete</h1>
+      <p>Your reports are ready. View or download the artifacts below.</p>
+      <div class="links">
+        <a href="/view/{{ run_id }}/report">View HTML report</a>
+        <a href="/download/{{ run_id }}/report.html">Download HTML report</a>
+        <a href="/download/{{ run_id }}/report.json">Download JSON report</a>
+      </div>
+      <a class="secondary" href="/">Run again</a>
+    </section>
+  </main>
+</body>
+</html>

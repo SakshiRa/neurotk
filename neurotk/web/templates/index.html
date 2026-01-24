@@ -1,58 +1,122 @@
-<!-- neurotk/web/templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NeuroTK Web</title>
+  <title>NeuroTK</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <main class="container">
-    <header class="header">
-      <h1>NeuroTK</h1>
-      <p class="subtitle">Local validation and preprocessing</p>
-      <p class="meta">Version {{ version }}</p>
-    </header>
 
+  <header class="topbar">
+    <div class="container">
+      <div class="brand">NeuroTK</div>
+      <div class="version">v{{ version }}</div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- HERO -->
+    <section class="hero">
+      <h1>Dataset validation and preprocessing for NIfTI studies</h1>
+      <p class="hero-subtitle">
+        Run rigorous dataset checks, generate audit-ready reports, and optionally
+        standardize spacing and orientation. Built for research teams and internal pipelines.
+      </p>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features">
+
+      <div class="feature-card">
+        <h3>Validate</h3>
+        <ul>
+          <li>File integrity and metadata checks</li>
+          <li>Orientation and spacing consistency</li>
+          <li>Missing and partial label detection</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <h3>Report</h3>
+        <ul>
+          <li>JSON as source of truth</li>
+          <li>Readable HTML summaries</li>
+          <li>Deterministic, reproducible outputs</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <h3>Preprocess</h3>
+        <ul>
+          <li>Reorientation to canonical space</li>
+          <li>Spacing normalization</li>
+          <li>No modification beyond transforms</li>
+        </ul>
+      </div>
+
+    </section>
+
+    <!-- FORM -->
     <section class="card">
       <h2>Upload Dataset</h2>
+      <p class="card-subtitle">
+        Provide images and optional labels. Outputs are stored temporarily and removed on exit.
+      </p>
+
       <form action="/run" method="post" enctype="multipart/form-data">
-        <div class="field">
-          <label for="images_files">Images (.nii or .nii.gz)</label>
-          <input id="images_files" name="images_files" type="file" multiple required />
-        </div>
-        <div class="field">
-          <label for="labels_files">Labels (.nii or .nii.gz, optional)</label>
-          <input id="labels_files" name="labels_files" type="file" multiple />
+
+        <div class="form-group">
+          <label>Images (.nii or .nii.gz)</label>
+          <input name="images_files" type="file" multiple required />
         </div>
 
-        <div class="field">
+        <div class="form-group">
+          <label>Labels (.nii or .nii.gz, optional)</label>
+          <input name="labels_files" type="file" multiple />
+        </div>
+
+        <div class="form-group">
           <label>Mode</label>
-          <div class="radio-row">
+          <div class="radio-group">
             <label><input type="radio" name="mode" value="validate" checked /> Validate only</label>
             <label><input type="radio" name="mode" value="preprocess" /> Validate + preprocess</label>
           </div>
         </div>
 
-        <div class="field">
-          <label for="spacing">Target spacing (sx sy sz)</label>
-          <input id="spacing" name="spacing" type="text" value="1 1 1" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Target spacing (sx sy sz)</label>
+            <input name="spacing" type="text" value="1 1 1" />
+          </div>
+
+          <div class="form-group">
+            <label>Target orientation</label>
+            <input name="orientation" type="text" value="RAS" />
+          </div>
         </div>
 
-        <div class="field">
-          <label for="orientation">Target orientation</label>
-          <input id="orientation" name="orientation" type="text" value="RAS" />
-        </div>
-
-        <div class="field checkbox">
+        <div class="form-group checkbox">
           <label><input type="checkbox" name="copy_metadata" /> Copy metadata when possible</label>
         </div>
 
-        <button type="submit" class="primary">Run</button>
+        <button type="submit" class="primary-btn">
+          Run Analysis
+        </button>
+
+        <p class="form-hint">
+          Flat file names only. No nested folders.
+        </p>
+
       </form>
-      <p class="hint">Uploads are stored temporarily and cleared on exit. Flat file names only.</p>
     </section>
+
   </main>
+
+  <footer class="footer">
+    NeuroTK — Dataset QA for Neurology Imaging
+  </footer>
+
 </body>
 </html>

@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 from typing import Tuple
 
 import nibabel as nib
 import numpy as np
 import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def _write_nifti(path: Path, data: np.ndarray, spacing: Tuple[float, float, float]) -> None:

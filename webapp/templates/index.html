@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroTK</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">NeuroTK</p>
+      <h1>Dataset validation and preprocessing for NIfTI studies</h1>
+      <p class="subtitle">
+        NeuroTK surfaces dataset issues early, produces audit-ready reports, and optionally standardizes spacing
+        and orientation with deterministic preprocessing.
+      </p>
+    </header>
+
+    <section class="content">
+      <div class="section">
+        <h2>What NeuroTK Does</h2>
+        <ul>
+          <li>Validate datasets for structure, spacing, and orientation issues</li>
+          <li>Generate JSON and HTML reports suitable for audit and review</li>
+          <li>Run deterministic preprocessing when requested</li>
+        </ul>
+      </div>
+      <div class="section">
+        <h2>What You Can Run Here</h2>
+        <ul>
+          <li>Validate only</li>
+          <li>Validate + preprocess</li>
+          <li>Download JSON and HTML reports</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Upload dataset</h2>
+      <form action="/run" method="post" enctype="multipart/form-data">
+        <div class="field">
+          <label for="images_files">Images (.nii or .nii.gz)</label>
+          <input id="images_files" name="images_files" type="file" multiple required />
+        </div>
+        <div class="field">
+          <label for="labels_files">Labels (.nii or .nii.gz, optional)</label>
+          <input id="labels_files" name="labels_files" type="file" multiple />
+        </div>
+
+        <div class="field">
+          <span class="label">Mode</span>
+          <div class="option-row">
+            <label class="option">
+              <input type="radio" name="mode" value="validate" checked />
+              <span>Validate only</span>
+            </label>
+            <label class="option">
+              <input type="radio" name="mode" value="preprocess" />
+              <span>Validate + preprocess</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="spacing">Target spacing (sx sy sz)</label>
+          <input id="spacing" name="spacing" type="text" value="1 1 1" />
+        </div>
+        <div class="field">
+          <label for="orientation">Target orientation</label>
+          <input id="orientation" name="orientation" type="text" value="RAS" />
+        </div>
+
+        <button type="submit" class="primary">Run</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

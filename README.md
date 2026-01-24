@@ -39,13 +39,25 @@ dataset/
 
 ## Output
 NeuroTK emits a JSON report containing a dataset-level summary, per-file diagnostics, and explicit listings of detected issues.
+For validate+preprocess runs, the report includes a processed summary and preprocess traceability so original and processed
+states are unambiguous.
 
 ```json
 {
-  "summary": {"num_images": 100, "files_with_issues": 7},
+  "summary": {"scope": "original_inputs", "num_images": 100, "files_with_issues": 7},
+  "summary_processed": {"scope": "processed_outputs", "num_images": 100},
   "files": {"case_001.nii.gz": {"issues": ["label_missing"]}}
 }
 ```
+
+### Validate vs preprocess semantics
+- `summary` always reflects original inputs.
+- `summary_processed` is present only for validate+preprocess runs and reflects outputs after preprocessing.
+- `run_mode` indicates whether preprocessing was requested.
+
+### Upgrading to v0.3.0
+Reports now include explicit `scope` fields and preprocess traceability blocks. These additions are backward-compatible
+for validation-only users.
 
 ## Citation
 If you use NeuroTK in your research, please cite it as follows:
