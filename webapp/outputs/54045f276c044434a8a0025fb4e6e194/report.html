@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NeuroTK - Dataset Validation Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f5;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #52606d;
+      --accent: #2f5d62;
+      --border: #d9d9d4;
+      --warn: #b45309;
+      --error: #9b1c1c;
+    }
+    body {
+      margin: 24px;
+      font-family: "Georgia", "Times New Roman", serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1, h2 {
+      margin: 0 0 12px 0;
+    }
+    h1 {
+      font-size: 28px;
+      color: var(--accent);
+    }
+    h2 {
+      font-size: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      margin-top: 28px;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .card {
+      background: var(--card);
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: #eef2f3;
+      font-weight: 600;
+    }
+    tr.has-issues {
+      background: #fff3f0;
+    }
+    .warning {
+      color: var(--warn);
+      font-weight: 600;
+    }
+    .error {
+      color: var(--error);
+      font-weight: 600;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .summary-item {
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .summary-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>NeuroTK</h1>
+  <div class="meta">Dataset Validation Report</div>
+  <div class="meta">Timestamp: 2026-01-24T18:10:02.850348+00:00</div>
+  <div class="meta">Version: 0.2.1</div>
+
+  <div class="card">
+    <h2>Dataset Summary</h2>
+    <div class="summary-grid">
+      <div class="summary-item"><span>Number of images</span>4</div>
+      <div class="summary-item"><span>Number of labels</span>0</div>
+      <div class="summary-item"><span>Files with issues</span>0</div>
+      <div class="summary-item"><span>Orientation consistency</span>consistent (L, A, S)</div>
+      <div class="summary-item"><span>Spacing mean ± std</span>0.439 ± 0.051, 0.439 ± 0.051, 4.300 ± 0.771</div>
+      <div class="summary-item"><span>Number of cases</span>4</div>
+      <div class="summary-item"><span>Warnings</span>none</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Image Stats</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Min</th>
+          <th>Max</th>
+          <th>Mean</th>
+          <th>Median</th>
+          <th>Stdev</th>
+          <th>P0.5</th>
+          <th>P10</th>
+          <th>P90</th>
+          <th>P99.5</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>shape</td><td>[512.0, 512.0, 34.0]</td><td>[512.0, 545.0, 59.0]</td><td>[512.0, 520.25, 45.75]</td><td>[512.0, 512.0, 45.0]</td><td>[0.0, 14.289419, 9.549215]</td><td>[512.0, 512.0, 34.09]</td><td>[512.0, 512.0, 35.8]</td><td>[512.0, 535.1, 56.3]</td><td>[512.0, 544.505, 58.865]</td></tr><tr><td>channels</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><td>spacing</td><td>[0.390625, 0.390625, 3.000433]</td><td>[0.507812, 0.507812, 5.0]</td><td>[0.439266, 0.439316, 4.299822]</td><td>[0.429312, 0.429413, 4.599428]</td><td>[0.050636, 0.050588, 0.771006]</td><td>[0.390625, 0.390628, 3.022933]</td><td>[0.390625, 0.390685, 3.450422]</td><td>[0.495869, 0.495869, 4.909538]</td><td>[0.507215, 0.507215, 4.995477]</td></tr><tr><td>size_mm</td><td>[200.0, 200.0, 159.747692]</td><td>[260.0, 260.0, 250.0]</td><td>[224.903999, 228.153999, 191.697256]</td><td>[219.807999, 226.307999, 178.520666]</td><td>[25.92581, 23.280016, 34.538747]</td><td>[200.0, 200.195, 160.00686]</td><td>[200.0, 203.9, 164.931052]</td><td>[253.884799, 253.884799, 229.004732]</td><td>[259.69424, 259.69424, 248.950237]</td></tr><tr><td>intensity</td><td>-2048.0</td><td>3234.0</td><td>-552.476646</td><td>-916.0</td><td>673.112687</td><td>-2048.0</td><td>-1006.0</td><td>78.0</td><td>1424.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>File-Level Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Filename</th>
+          <th>Shape</th>
+          <th>Spacing</th>
+          <th>Orientation</th>
+          <th>Label present</th>
+          <th>Issue count</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class=""><td>TBI_INVAC184NYT.nii</td><td>512, 512, 40</td><td>0.5078125, 0.5078125, 4.500394344329834</td><td>L, A, S</td><td>n/a</td><td>0</td></tr><tr class=""><td>TBI_INVAD681WTY.nii</td><td>512, 545, 50</td><td>0.390625, 0.39082568883895874, 5.0</td><td>L, A, S</td><td>n/a</td><td>0</td></tr><tr class=""><td>TBI_INVBB568ZB1.nii</td><td>512, 512, 59</td><td>0.390625, 0.390625, 3.0004332065582275</td><td>L, A, S</td><td>n/a</td><td>0</td></tr><tr class=""><td>TBI_INVBH941DFJ.nii</td><td>512, 512, 34</td><td>0.46799999475479126, 0.46799999475479126, 4.698461532592773</td><td>L, A, S</td><td>n/a</td><td>0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Issues</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Issue type</th>
+          <th>Severity</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3">No issues reported</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
