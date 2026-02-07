@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import sys
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -20,6 +21,19 @@ from .utils import nifti_stem, orientation_codes, spacing_from_header
 from .preprocess import preprocess_dataset
 from .validate import validate_image, validate_label
 from . import __version__
+
+
+def _configure_warning_filters() -> None:
+    warnings.filterwarnings(
+        "ignore",
+        message="Using a non-tuple sequence for multidimensional indexing is deprecated.*",
+        category=UserWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=".*get_mask_edges:always_return_as_numpy: Argument `always_return_as_numpy` has been deprecated.*",
+        category=FutureWarning,
+    )
 
 
 def _is_nifti(path: Path) -> bool:
@@ -281,6 +295,31 @@ def _parse_args() -> argparse.Namespace:
     preprocess_parser.add_argument("--dry-run", action="store_true")
     preprocess_parser.add_argument("--copy-metadata", action="store_true")
 
+    infer_parser = subparsers.add_parser("infer")
+    infer_parser.add_argument(
+        "--bundle-dir",
+        required=False,
+        default=None,
+        type=str,
+        help=(
+            "Local MONAI bundle path or HF repo (org/model, hf:org/model, or https://huggingface.co/org/model). "
+            "Defaults to NEUROTK_DEFAULT_BUNDLE or UMNSHAMLAB/segresnet."
+        ),
+    )
+    infer_parser.add_argument("--input", default=None, type=Path)
+    infer_parser.add_argument("--input-list", default=None, type=Path)
+    infer_parser.add_argument("--output-dir", required=True, type=Path)
+    infer_parser.add_argument("--device", default=None)
+    infer_parser.add_argument("--save-probs", action="store_true")
+    infer_parser.add_argument("--labels-dir", default=None, type=Path)
+    infer_parser.add_argument("--reference-image", default=None, type=Path)
+
+    dice_parser = subparsers.add_parser("dice")
+    dice_parser.add_argument("--preds", default=None, type=Path)
+    dice_parser.add_argument("--preds-list", default=None, type=Path)
+    dice_parser.add_argument("--labels-dir", required=True, type=Path)
+    dice_parser.add_argument("--output", required=True, type=Path)
+
     return parser.parse_args()
 
 
@@ -445,17 +484,99 @@ def _run_preprocess(args: argparse.Namespace) -> int:
     return 0
 
 
+def _autodetect_labels_dir(
+    input_path: Optional[Path], input_list: Optional[Path], labels_dir: Optional[Path]
+) -> Optional[Path]:
+    if labels_dir is not None:
+        return labels_dir
+    if input_list is not None or input_path is None:
+        return None
+    if not input_path.exists() or not input_path.is_dir():
+        return None
+
+    candidates = [input_path.parent / "labels"]
+    lower_name = input_path.name.lower()
+    if lower_name.startswith("images"):
+        suffix = input_path.name[6:]
+        candidates.append(input_path.with_name(f"labels{suffix}"))
+
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return None
+
+
+def _run_infer(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_inference
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        default_bundle = os.environ.get("NEUROTK_DEFAULT_BUNDLE", "UMNSHAMLAB/segresnet")
+        bundle_dir = args.bundle_dir or default_bundle
+        effective_labels_dir = _autodetect_labels_dir(args.input, args.input_list, args.labels_dir)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Using a non-tuple sequence for multidimensional indexing is deprecated.*",
+                category=UserWarning,
+            )
+            run_inference(
+                bundle_dir=bundle_dir,
+                input_path=args.input,
+                input_list=args.input_list,
+                output_dir=args.output_dir,
+                device=args.device,
+                save_probs=args.save_probs,
+                labels_dir=effective_labels_dir,
+                reference_image=args.reference_image,
+            )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Inference complete")
+    return 0
+
+
+def _run_dice(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_dice
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_dice(
+            preds_path=args.preds,
+            preds_list=args.preds_list,
+            labels_dir=args.labels_dir,
+            output_csv=args.output,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Dice computation complete")
+    return 0
+
+
 def run() -> int:
     args = _parse_args()
     if args.command == "validate":
         return _run_validate(args)
     if args.command == "preprocess":
         return _run_preprocess(args)
+    if args.command == "infer":
+        return _run_infer(args)
+    if args.command == "dice":
+        return _run_dice(args)
     raise SystemExit(f"Unknown command: {args.command}")
 
 
 def main() -> None:
     """CLI entrypoint."""
+    _configure_warning_filters()
     raise SystemExit(run())
 
 

@@ -37,6 +37,63 @@ dataset/
     case_002.nii.gz
 ```
 
+## Inference (MONAI bundles)
+NeuroTK can run inference from external MONAI bundles via the optional inference extras:
+
+```sh
+pip install neurotk[inference]
+```
+
+Single image:
+```sh
+neurotk infer \
+  --bundle-dir /path/to/bundle \
+  --input image.nii.gz \
+  --output-dir outputs/
+```
+
+Default bundle (uses `NEUROTK_DEFAULT_BUNDLE` or `UMNSHAMLAB/segresnet`):
+```sh
+neurotk infer \
+  --input image.nii.gz \
+  --output-dir outputs/
+```
+Default HF bundle repo: `UMNSHAMLAB/segresnet`.
+
+From Hugging Face (auto-download + cache full bundle):
+```sh
+neurotk infer \
+  --bundle-dir hf:UMNSHAMLAB/segresnet \
+  --input image.nii.gz \
+  --output-dir outputs/
+```
+
+You can also pass a Hugging Face repo URL:
+```sh
+neurotk infer \
+  --bundle-dir https://huggingface.co/UMNSHAMLAB/segresnet \
+  --input image.nii.gz \
+  --output-dir outputs/
+```
+
+Batch mode:
+```sh
+neurotk infer \
+  --bundle-dir /path/to/bundle \
+  --input-list images.txt \
+  --output-dir outputs/
+```
+
+Dice after inference:
+```sh
+neurotk dice \
+  --preds outputs/ \
+  --labels-dir labels/ \
+  --output outputs/dice_scores.csv
+```
+
+Note: for full-bundle HF usage, the repo must contain a valid MONAI bundle layout (e.g., `configs/` with inference/evaluate config and `models/` checkpoints).
+
 ## Output
 NeuroTK emits a JSON report containing a dataset-level summary, per-file diagnostics, and explicit listings of detected issues.
 For validate+preprocess runs, the report includes a processed summary and preprocess traceability so original and processed
@@ -58,6 +115,10 @@ states are unambiguous.
 ### Upgrading to v0.3.0
 Reports now include explicit `scope` fields and preprocess traceability blocks. These additions are backward-compatible
 for validation-only users.
+
+## Web UI
+The FastAPI app in `webapp/` is the primary landing page and execution interface. The older `site/` Next.js prototype
+is deprecated and should not be used for deployment.
 
 ## Citation
 If you use NeuroTK in your research, please cite it as follows:

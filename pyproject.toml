@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neurotk"
-version = "0.3.0"
+version = "0.3.1"
 description = "Dataset validation and preprocessing toolkit for neurology brain imaging (NIfTI)"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -20,11 +20,20 @@ dependencies = [
   "pyyaml",
   "fastapi",
   "uvicorn",
-  "jinja2"
+  "jinja2",
+  "python-multipart"
+]
+
+[project.optional-dependencies]
+inference = [
+  "torch",
+  "monai",
+  "tqdm",
+  "huggingface_hub"
 ]
 
 [project.scripts]
 neurotk = "neurotk.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["neurotk"]
+include = ["neurotk", "neurotk.*"]
