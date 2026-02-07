@@ -281,6 +281,31 @@ def _parse_args() -> argparse.Namespace:
     preprocess_parser.add_argument("--dry-run", action="store_true")
     preprocess_parser.add_argument("--copy-metadata", action="store_true")
 
+    infer_parser = subparsers.add_parser("infer")
+    infer_parser.add_argument(
+        "--bundle-dir",
+        required=False,
+        default=None,
+        type=str,
+        help=(
+            "Local MONAI bundle path or HF repo (org/model, hf:org/model, or https://huggingface.co/org/model). "
+            "Defaults to NEUROTK_DEFAULT_BUNDLE or UMNSHAMLAB/segresnet."
+        ),
+    )
+    infer_parser.add_argument("--input", default=None, type=Path)
+    infer_parser.add_argument("--input-list", default=None, type=Path)
+    infer_parser.add_argument("--output-dir", required=True, type=Path)
+    infer_parser.add_argument("--device", default=None)
+    infer_parser.add_argument("--save-probs", action="store_true")
+    infer_parser.add_argument("--labels-dir", default=None, type=Path)
+    infer_parser.add_argument("--reference-image", default=None, type=Path)
+
+    dice_parser = subparsers.add_parser("dice")
+    dice_parser.add_argument("--preds", default=None, type=Path)
+    dice_parser.add_argument("--preds-list", default=None, type=Path)
+    dice_parser.add_argument("--labels-dir", required=True, type=Path)
+    dice_parser.add_argument("--output", required=True, type=Path)
+
     return parser.parse_args()
 
 
@@ -445,12 +470,64 @@ def _run_preprocess(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_infer(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_inference
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        default_bundle = os.environ.get("NEUROTK_DEFAULT_BUNDLE", "UMNSHAMLAB/segresnet")
+        bundle_dir = args.bundle_dir or default_bundle
+        run_inference(
+            bundle_dir=bundle_dir,
+            input_path=args.input,
+            input_list=args.input_list,
+            output_dir=args.output_dir,
+            device=args.device,
+            save_probs=args.save_probs,
+            labels_dir=args.labels_dir,
+            reference_image=args.reference_image,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Inference complete")
+    return 0
+
+
+def _run_dice(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_dice
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_dice(
+            preds_path=args.preds,
+            preds_list=args.preds_list,
+            labels_dir=args.labels_dir,
+            output_csv=args.output,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Dice computation complete")
+    return 0
+
+
 def run() -> int:
     args = _parse_args()
     if args.command == "validate":
         return _run_validate(args)
     if args.command == "preprocess":
         return _run_preprocess(args)
+    if args.command == "infer":
+        return _run_infer(args)
+    if args.command == "dice":
+        return _run_dice(args)
     raise SystemExit(f"Unknown command: {args.command}")
 
 

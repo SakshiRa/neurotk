@@ -16,3 +16,9 @@ env/
 *.json
 *.DS_Store
 Thumbs.db
+.idea/
+site/.next/
+site/node_modules/
+outputs/
+webapp/outputs/
+webapp/tmp_runs/
