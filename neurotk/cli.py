@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import sys
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -20,6 +21,19 @@ from .utils import nifti_stem, orientation_codes, spacing_from_header
 from .preprocess import preprocess_dataset
 from .validate import validate_image, validate_label
 from . import __version__
+
+
+def _configure_warning_filters() -> None:
+    warnings.filterwarnings(
+        "ignore",
+        message="Using a non-tuple sequence for multidimensional indexing is deprecated.*",
+        category=UserWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=".*get_mask_edges:always_return_as_numpy: Argument `always_return_as_numpy` has been deprecated.*",
+        category=FutureWarning,
+    )
 
 
 def _is_nifti(path: Path) -> bool:
@@ -470,6 +484,28 @@ def _run_preprocess(args: argparse.Namespace) -> int:
     return 0
 
 
+def _autodetect_labels_dir(
+    input_path: Optional[Path], input_list: Optional[Path], labels_dir: Optional[Path]
+) -> Optional[Path]:
+    if labels_dir is not None:
+        return labels_dir
+    if input_list is not None or input_path is None:
+        return None
+    if not input_path.exists() or not input_path.is_dir():
+        return None
+
+    candidates = [input_path.parent / "labels"]
+    lower_name = input_path.name.lower()
+    if lower_name.startswith("images"):
+        suffix = input_path.name[6:]
+        candidates.append(input_path.with_name(f"labels{suffix}"))
+
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return None
+
+
 def _run_infer(args: argparse.Namespace) -> int:
     try:
         from .inference.runner import run_inference
@@ -481,16 +517,23 @@ def _run_infer(args: argparse.Namespace) -> int:
     try:
         default_bundle = os.environ.get("NEUROTK_DEFAULT_BUNDLE", "UMNSHAMLAB/segresnet")
         bundle_dir = args.bundle_dir or default_bundle
-        run_inference(
-            bundle_dir=bundle_dir,
-            input_path=args.input,
-            input_list=args.input_list,
-            output_dir=args.output_dir,
-            device=args.device,
-            save_probs=args.save_probs,
-            labels_dir=args.labels_dir,
-            reference_image=args.reference_image,
-        )
+        effective_labels_dir = _autodetect_labels_dir(args.input, args.input_list, args.labels_dir)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Using a non-tuple sequence for multidimensional indexing is deprecated.*",
+                category=UserWarning,
+            )
+            run_inference(
+                bundle_dir=bundle_dir,
+                input_path=args.input,
+                input_list=args.input_list,
+                output_dir=args.output_dir,
+                device=args.device,
+                save_probs=args.save_probs,
+                labels_dir=effective_labels_dir,
+                reference_image=args.reference_image,
+            )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
     print("Inference complete")
@@ -533,6 +576,7 @@ def run() -> int:
 
 def main() -> None:
     """CLI entrypoint."""
+    _configure_warning_filters()
     raise SystemExit(run())
 
 

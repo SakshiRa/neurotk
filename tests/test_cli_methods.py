@@ -95,6 +95,64 @@ def test_run_infer_wraps_value_error_as_system_exit(monkeypatch, tmp_path: Path)
         cli._run_infer(args)
 
 
+def test_run_infer_autodetects_labels_dir_from_images_input(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_inference(**kwargs):
+        captured.update(kwargs)
+
+    fake_runner = SimpleNamespace(run_inference=fake_run_inference, run_dice=lambda **_: None)
+    monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
+
+    images_dir = tmp_path / "images"
+    labels_dir = tmp_path / "labels"
+    images_dir.mkdir()
+    labels_dir.mkdir()
+
+    args = SimpleNamespace(
+        bundle_dir="bundle",
+        input=images_dir,
+        input_list=None,
+        output_dir=tmp_path / "preds",
+        device=None,
+        save_probs=False,
+        labels_dir=None,
+        reference_image=None,
+    )
+
+    rc = cli._run_infer(args)
+    assert rc == 0
+    assert captured["labels_dir"] == labels_dir
+
+
+def test_run_infer_skips_labels_when_autodetect_finds_none(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_inference(**kwargs):
+        captured.update(kwargs)
+
+    fake_runner = SimpleNamespace(run_inference=fake_run_inference, run_dice=lambda **_: None)
+    monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
+
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+
+    args = SimpleNamespace(
+        bundle_dir="bundle",
+        input=images_dir,
+        input_list=None,
+        output_dir=tmp_path / "preds",
+        device=None,
+        save_probs=False,
+        labels_dir=None,
+        reference_image=None,
+    )
+
+    rc = cli._run_infer(args)
+    assert rc == 0
+    assert captured["labels_dir"] is None
+
+
 def test_run_dice_invokes_runner(monkeypatch, tmp_path: Path) -> None:
     captured = {}
 

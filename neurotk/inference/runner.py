@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -35,6 +36,8 @@ def _resolve_inputs(input_path: Optional[Path], input_list: Optional[Path]) -> L
     if input_list:
         return _read_input_list(input_list)
     if input_path:
+        if not input_path.exists():
+            raise ValueError(f"Input path does not exist: {input_path}")
         if input_path.is_dir():
             files = [
                 p for p in input_path.iterdir() if p.is_file() and _is_nifti(p)
@@ -126,6 +129,8 @@ def run_inference(
 ) -> None:
     bundle_dir = Path(resolve_bundle_dir(os.fspath(bundle_dir)))
     output_dir.mkdir(parents=True, exist_ok=True)
+    if labels_dir is not None and (not labels_dir.exists() or not labels_dir.is_dir()):
+        labels_dir = None
 
     predictor = BundlePredictor(bundle_dir=os.fspath(bundle_dir), device=device)
     inputs = _resolve_inputs(input_path, input_list)
@@ -186,3 +191,5 @@ def run_inference(
             print(f"{name},{d:.4f},{h_str}")
         mean_dice = sum(m[1] for m in metrics) / len(metrics)
         print(f"mean_dice,{mean_dice:.4f}")
+    elif dice_report_path.exists():
+        dice_report_path.unlink()

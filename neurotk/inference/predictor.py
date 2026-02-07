@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from typing import Any, Dict, Optional, Tuple
 
 import torch
@@ -138,7 +139,14 @@ class BundlePredictor:
                 self._segmenter.config["data_file_base_dir"] = os.path.dirname(image_path)
             except Exception:
                 pass
-            pred = self._segmenter.infer_image({"image": image_path})
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="Using a non-tuple sequence for multidimensional indexing is deprecated.*",
+                    category=UserWarning,
+                    module=r"monai\.inferers\.utils",
+                )
+                pred = self._segmenter.infer_image({"image": image_path})
             meta = {}
             if hasattr(pred, "meta"):
                 meta = pred.meta
@@ -156,7 +164,14 @@ class BundlePredictor:
             img = torch.as_tensor(img)
         img = img.unsqueeze(0).to(self._get_device())
         with torch.no_grad():
-            pred = self._inferer(inputs=img, network=self._net)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="Using a non-tuple sequence for multidimensional indexing is deprecated.*",
+                    category=UserWarning,
+                    module=r"monai\.inferers\.utils",
+                )
+                pred = self._inferer(inputs=img, network=self._net)
         if isinstance(pred, (tuple, list)):
             pred = pred[0]
         pred = pred.detach().cpu()
