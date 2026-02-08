@@ -135,6 +135,7 @@ def run_inference(
     device: Optional[str],
     save_probs: bool,
     force: bool,
+    skip_invalid_inputs: bool,
     labels_dir: Optional[Path],
     reference_image: Optional[Path],
 ) -> None:
@@ -154,49 +155,61 @@ def run_inference(
 
     metrics = []
     dice_report_path = output_dir / "dice_scores.csv"
+    skipped_invalid_path = output_dir / "skipped_inputs.csv"
     skipped_existing = 0
+    skipped_invalid = []
     for image_path in tqdm(inputs, desc="inference"):
         out_path = _infer_output_path(output_dir, image_path, "_prob" if save_probs else "_seg")
         if not force and out_path.exists():
             skipped_existing += 1
             continue
-        pred, meta = predictor.predict_volume(os.fspath(image_path))
-        pred_arr = _prepare_pred(pred, save_probs)
-        if not save_probs:
-            if pred_arr.dtype != np.uint8:
-                pred_arr = (pred_arr > 0.5).astype(np.uint8)
-            else:
-                pred_arr = to_uint8_mask(pred_arr)
-        affine = None
-        header = None
-        if isinstance(meta, dict):
-            if "affine" in meta and meta["affine"] is not None:
-                affine = meta["affine"]
-            elif "original_affine" in meta and meta["original_affine"] is not None:
-                affine = meta["original_affine"]
-        if reference_image is not None:
-            ref = nib.load(os.fspath(reference_image))
-            affine = ref.affine
-            header = ref.header
-        if affine is None:
-            img = nib.load(os.fspath(image_path))
-            affine = img.affine
-            header = img.header
-        save_nifti(pred_arr, affine, out_path, header=header)
+        try:
+            pred, meta = predictor.predict_volume(os.fspath(image_path))
+            pred_arr = _prepare_pred(pred, save_probs)
+            if not save_probs:
+                if pred_arr.dtype != np.uint8:
+                    pred_arr = (pred_arr > 0.5).astype(np.uint8)
+                else:
+                    pred_arr = to_uint8_mask(pred_arr)
+            affine = None
+            header = None
+            if isinstance(meta, dict):
+                if "affine" in meta and meta["affine"] is not None:
+                    affine = meta["affine"]
+                elif "original_affine" in meta and meta["original_affine"] is not None:
+                    affine = meta["original_affine"]
+            if reference_image is not None:
+                ref = nib.load(os.fspath(reference_image))
+                affine = ref.affine
+                header = ref.header
+            if affine is None:
+                img = nib.load(os.fspath(image_path))
+                affine = img.affine
+                header = img.header
+            save_nifti(pred_arr, affine, out_path, header=header)
 
-        if labels_dir:
-            label_path = _infer_output_path(labels_dir, image_path, "")
-            if not label_path.exists():
-                label_path = _infer_output_path(labels_dir, image_path, "_seg")
-            if label_path.exists():
-                label_np, _ = load_nifti(label_path)
-                pred_mask = torch.as_tensor(pred_arr > 0.5)
-                label_mask = torch.as_tensor(label_np > 0.5)
-                if pred_mask.shape != label_mask.shape:
-                    resize = Resize(spatial_size=pred_mask.shape, mode="nearest")
-                    label_mask = resize(label_mask.unsqueeze(0).unsqueeze(0))[0, 0]
-                d, h = compute_metrics(pred_mask, label_mask)
-                metrics.append((image_path.name, d, h))
+            if labels_dir:
+                label_path = _infer_output_path(labels_dir, image_path, "")
+                if not label_path.exists():
+                    label_path = _infer_output_path(labels_dir, image_path, "_seg")
+                if label_path.exists():
+                    label_np, _ = load_nifti(label_path)
+                    pred_mask = torch.as_tensor(pred_arr > 0.5)
+                    label_mask = torch.as_tensor(label_np > 0.5)
+                    if pred_mask.shape != label_mask.shape:
+                        resize = Resize(spatial_size=pred_mask.shape, mode="nearest")
+                        label_mask = resize(label_mask.unsqueeze(0).unsqueeze(0))[0, 0]
+                    d, h = compute_metrics(pred_mask, label_mask)
+                    metrics.append((image_path.name, d, h))
+        except Exception as exc:
+            if not skip_invalid_inputs:
+                raise
+            skipped_invalid.append((image_path.name, f"{type(exc).__name__}: {exc}"))
+            print(
+                f"Skipping invalid input {image_path.name}: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            continue
 
     if metrics:
         with dice_report_path.open("w", encoding="utf-8") as f:
@@ -218,5 +231,16 @@ def run_inference(
     if skipped_existing > 0:
         print(
             f"Skipped {skipped_existing} input(s) with existing outputs. Use --force to recompute.",
+            file=sys.stderr,
+        )
+
+    if skipped_invalid:
+        with skipped_invalid_path.open("w", encoding="utf-8") as f:
+            f.write("image,error\n")
+            for image_name, error in skipped_invalid:
+                safe_error = error.replace("\n", " ").replace("\r", " ").replace(",", ";")
+                f.write(f"{image_name},{safe_error}\n")
+        print(
+            f"Skipped {len(skipped_invalid)} invalid input(s). Details: {skipped_invalid_path}",
             file=sys.stderr,
         )

@@ -316,6 +316,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Re-run inference even if output prediction file already exists.",
     )
+    infer_parser.add_argument(
+        "--skip-invalid-inputs",
+        action="store_true",
+        help="Skip files that fail inference and continue with remaining inputs.",
+    )
     infer_parser.add_argument("--labels-dir", default=None, type=Path)
     infer_parser.add_argument("--reference-image", default=None, type=Path)
 
@@ -537,6 +542,7 @@ def _run_infer(args: argparse.Namespace) -> int:
                 device=args.device,
                 save_probs=args.save_probs,
                 force=args.force,
+                skip_invalid_inputs=args.skip_invalid_inputs,
                 labels_dir=effective_labels_dir,
                 reference_image=args.reference_image,
             )

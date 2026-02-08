@@ -134,6 +134,7 @@ Key options:
 - `--device` (optional): inference device (for example `cuda`, `cuda:0`, `mps`, `cpu`).
 - `--save-probs` (optional): save probability output (`*_prob.nii.gz`) instead of segmentation (`*_seg.nii.gz`).
 - `--force` (optional): recompute outputs even if prediction files already exist.
+- `--skip-invalid-inputs` (optional): continue inference by skipping files that fail (for example incompatible channels/dimensions).
 - `--labels-dir` (optional): labels directory used to compute Dice during inference.
 - `--reference-image` (optional): image whose affine/header are used for saved outputs.
 
@@ -157,6 +158,7 @@ Dice during inference:
 - If labels are not present, Dice is skipped.
 - If `--input` path does not exist, inference fails fast with a clear error.
 - Existing prediction outputs are skipped by default; pass `--force` to recompute.
+- With `--skip-invalid-inputs`, invalid files are skipped and recorded in `outputs/skipped_inputs.csv`.
 
 Dice after inference:
 ```sh
