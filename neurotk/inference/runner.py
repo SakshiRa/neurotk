@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -116,6 +117,15 @@ def _prepare_pred(pred: torch.Tensor, save_probs: bool) -> np.ndarray:
     return pred.cpu().numpy()
 
 
+def _effective_device_name(device: Optional[str]) -> str:
+    if device is not None:
+        try:
+            return str(torch.device(device))
+        except Exception:
+            return device
+    return "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
 def run_inference(
     *,
     bundle_dir: Union[str, Path],
@@ -129,6 +139,12 @@ def run_inference(
 ) -> None:
     bundle_dir = Path(resolve_bundle_dir(os.fspath(bundle_dir)))
     output_dir.mkdir(parents=True, exist_ok=True)
+    effective_device = _effective_device_name(device)
+    if effective_device == "cpu":
+        print(
+            "Warning: running inference on CPU. This may be slow; use --device cuda or --device mps if available.",
+            file=sys.stderr,
+        )
     if labels_dir is not None and (not labels_dir.exists() or not labels_dir.is_dir()):
         labels_dir = None
 

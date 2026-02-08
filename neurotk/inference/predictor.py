@@ -10,6 +10,7 @@ from monai.inferers import SlidingWindowInferer
 from monai.transforms import Compose, SaveImaged
 
 from .io_utils import save_nifti
+from .monai_compat import prepare_bundle_import_compat, report_runtime_versions
 
 
 class BundlePredictor:
@@ -28,6 +29,7 @@ class BundlePredictor:
         self._pre = None
         self._post = None
         self._inferer = None
+        report_runtime_versions()
         self._load_from_bundle()
 
     def _resolve_config_file(self) -> str:
@@ -54,8 +56,16 @@ class BundlePredictor:
             if os.path.exists(segmenter_py):
                 import sys
 
+                prepare_bundle_import_compat()
                 sys.path.insert(0, scripts_dir)
-                from segmenter import Segmenter  # type: ignore
+                try:
+                    from segmenter import Segmenter  # type: ignore
+                except ImportError as exc:
+                    raise ValueError(
+                        "Failed to import bundle Segmenter due to MONAI API mismatch. "
+                        "Install a supported MONAI version (recommended: >=1.3,<1.6) "
+                        "or use a bundle compatible with your MONAI release."
+                    ) from exc
 
                 overrides = {
                     "infer#enabled": True,
@@ -66,7 +76,14 @@ class BundlePredictor:
                 if os.path.exists(dataset_json):
                     overrides["data_list_file_path"] = dataset_json
                 overrides["data_file_base_dir"] = os.path.dirname(self.bundle_dir)
-                self._segmenter = Segmenter(config_file=self.config_file, config_dict=overrides)
+                try:
+                    self._segmenter = Segmenter(config_file=self.config_file, config_dict=overrides)
+                except TypeError as exc:
+                    raise ValueError(
+                        "Bundle Segmenter initialization failed due to MONAI API mismatch "
+                        "(for example DiceHelper signature drift). "
+                        "Install a supported MONAI version (recommended: >=1.3,<1.6)."
+                    ) from exc
                 return
 
         device = self._get_device()
