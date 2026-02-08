@@ -330,6 +330,15 @@ def _parse_args() -> argparse.Namespace:
     dice_parser.add_argument("--labels-dir", required=True, type=Path)
     dice_parser.add_argument("--output", required=True, type=Path)
 
+    vol_parser = subparsers.add_parser("lesion-volume")
+    vol_parser.add_argument("--preds", default=None, type=Path)
+    vol_parser.add_argument("--preds-list", default=None, type=Path)
+    vol_parser.add_argument("--output", required=True, type=Path)
+    vol_parser.add_argument("--summary-output", default=None, type=Path)
+    vol_parser.add_argument("--threshold", default=0.5, type=float)
+    vol_parser.add_argument("--histogram", default=None, type=Path)
+    vol_parser.add_argument("--hist-bins", default=30, type=int)
+
     return parser.parse_args()
 
 
@@ -573,6 +582,30 @@ def _run_dice(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_lesion_volume(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_lesion_volume
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_lesion_volume(
+            preds_path=args.preds,
+            preds_list=args.preds_list,
+            output_csv=args.output,
+            summary_csv=args.summary_output,
+            threshold=args.threshold,
+            histogram_path=args.histogram,
+            hist_bins=args.hist_bins,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Lesion volume computation complete")
+    return 0
+
+
 def run() -> int:
     args = _parse_args()
     if args.command == "validate":
@@ -583,6 +616,8 @@ def run() -> int:
         return _run_infer(args)
     if args.command == "dice":
         return _run_dice(args)
+    if args.command == "lesion-volume":
+        return _run_lesion_volume(args)
     raise SystemExit(f"Unknown command: {args.command}")
 
 

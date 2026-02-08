@@ -98,6 +98,137 @@ def run_dice(
     print(f"mean_dice,{mean_dice:.4f}")
 
 
+def _to_binary_mask(arr: np.ndarray, threshold: float) -> np.ndarray:
+    if arr.ndim == 3:
+        return arr > threshold
+    if arr.ndim == 4:
+        if arr.shape[0] == 1:
+            return arr[0] > threshold
+        labels = np.argmax(arr, axis=0)
+        return labels > 0
+    raise ValueError(f"Unsupported prediction array shape for volume computation: {arr.shape}")
+
+
+def _volume_range_summary_rows(values_ml: List[float]):
+    ranges = [
+        ("0 mL", lambda x: x == 0.0),
+        (">0 to <1 mL", lambda x: 0.0 < x < 1.0),
+        ("1 to <5 mL", lambda x: 1.0 <= x < 5.0),
+        ("5 to <10 mL", lambda x: 5.0 <= x < 10.0),
+        ("10 to <20 mL", lambda x: 10.0 <= x < 20.0),
+        ("20 to <50 mL", lambda x: 20.0 <= x < 50.0),
+        ("50+ mL", lambda x: x >= 50.0),
+    ]
+    total = len(values_ml)
+    rows = []
+    for label, predicate in ranges:
+        count = sum(1 for value in values_ml if predicate(value))
+        percent = (100.0 * count / total) if total else 0.0
+        rows.append((label, count, percent))
+    return rows
+
+
+def _volume_overall_stats(values_ml: List[float]):
+    if not values_ml:
+        return {
+            "total_images": 0.0,
+            "min_ml": 0.0,
+            "p25_ml": 0.0,
+            "median_ml": 0.0,
+            "p75_ml": 0.0,
+            "max_ml": 0.0,
+            "mean_ml": 0.0,
+        }
+    arr = np.asarray(values_ml, dtype=np.float64)
+    return {
+        "total_images": float(arr.size),
+        "min_ml": float(np.min(arr)),
+        "p25_ml": float(np.quantile(arr, 0.25)),
+        "median_ml": float(np.quantile(arr, 0.50)),
+        "p75_ml": float(np.quantile(arr, 0.75)),
+        "max_ml": float(np.max(arr)),
+        "mean_ml": float(np.mean(arr)),
+    }
+
+
+def run_lesion_volume(
+    *,
+    preds_path: Optional[Path],
+    preds_list: Optional[Path],
+    output_csv: Path,
+    threshold: float = 0.5,
+    histogram_path: Optional[Path] = None,
+    hist_bins: int = 30,
+    summary_csv: Optional[Path] = None,
+) -> None:
+    preds = _resolve_inputs(preds_path, preds_list)
+    if not preds:
+        raise ValueError("No prediction files found")
+
+    rows = []
+    for pred_path in tqdm(preds, desc="lesion-volume"):
+        img = nib.load(os.fspath(pred_path))
+        arr = img.get_fdata(dtype=np.float32)
+        mask = _to_binary_mask(arr, threshold)
+        lesion_voxels = int(np.count_nonzero(mask))
+        spacing = img.header.get_zooms()[:3]
+        voxel_volume_mm3 = float(spacing[0] * spacing[1] * spacing[2])
+        lesion_volume_mm3 = float(lesion_voxels * voxel_volume_mm3)
+        lesion_volume_ml = lesion_volume_mm3 / 1000.0
+        rows.append(
+            (
+                pred_path.name,
+                lesion_voxels,
+                voxel_volume_mm3,
+                lesion_volume_mm3,
+                lesion_volume_ml,
+            )
+        )
+
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open("w", encoding="utf-8") as f:
+        f.write("image,lesion_voxels,voxel_volume_mm3,lesion_volume_mm3,lesion_volume_ml\n")
+        for image_name, voxels, voxel_mm3, vol_mm3, vol_ml in rows:
+            f.write(f"{image_name},{voxels},{voxel_mm3:.6f},{vol_mm3:.6f},{vol_ml:.6f}\n")
+
+    if summary_csv is None:
+        summary_csv = output_csv.with_name(f"{output_csv.stem}_summary.csv")
+    summary_rows = _volume_range_summary_rows([r[4] for r in rows])
+    overall_stats = _volume_overall_stats([r[4] for r in rows])
+    summary_csv.parent.mkdir(parents=True, exist_ok=True)
+    with summary_csv.open("w", encoding="utf-8") as f:
+        f.write("category,metric,count,percent,value_ml\n")
+        for label, count, percent in summary_rows:
+            f.write(f"range,{label},{count},{percent:.2f},\n")
+        for metric, value in overall_stats.items():
+            if metric == "total_images":
+                f.write(f"overall,{metric},{int(value)},,\n")
+            else:
+                f.write(f"overall,{metric},,,{value:.6f}\n")
+
+    if histogram_path is not None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        histogram_path.parent.mkdir(parents=True, exist_ok=True)
+        vals_ml = [r[4] for r in rows]
+        fig = plt.figure(figsize=(8, 5))
+        plt.hist(vals_ml, bins=max(int(hist_bins), 1), edgecolor="black", alpha=0.85)
+        plt.xlabel("Lesion Volume (mL)")
+        plt.ylabel("Count")
+        plt.title("Lesion Volume Distribution")
+        plt.tight_layout()
+        fig.savefig(histogram_path, dpi=180)
+        plt.close(fig)
+
+    print("image,lesion_voxels,voxel_volume_mm3,lesion_volume_mm3,lesion_volume_ml")
+    for image_name, voxels, voxel_mm3, vol_mm3, vol_ml in rows:
+        print(f"{image_name},{voxels},{voxel_mm3:.6f},{vol_mm3:.6f},{vol_ml:.6f}")
+    print(f"Saved lesion volume summary: {summary_csv}")
+
+
 def _infer_output_path(output_dir: Path, image_path: Path, suffix: str) -> Path:
     base = image_path.name
     if base.endswith(".nii.gz"):

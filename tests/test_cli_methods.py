@@ -187,11 +187,46 @@ def test_run_dice_invokes_runner(monkeypatch, tmp_path: Path) -> None:
     assert captured["output_csv"] == args.output
 
 
+def test_run_lesion_volume_invokes_runner(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_lesion_volume(**kwargs):
+        captured.update(kwargs)
+
+    fake_runner = SimpleNamespace(
+        run_inference=lambda **_: None,
+        run_dice=lambda **_: None,
+        run_lesion_volume=fake_run_lesion_volume,
+    )
+    monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
+
+    args = SimpleNamespace(
+        preds=tmp_path / "preds",
+        preds_list=tmp_path / "preds.txt",
+        output=tmp_path / "volumes.csv",
+        summary_output=tmp_path / "volumes_summary.csv",
+        threshold=0.25,
+        histogram=tmp_path / "hist.png",
+        hist_bins=25,
+    )
+
+    rc = cli._run_lesion_volume(args)
+    assert rc == 0
+    assert captured["preds_path"] == args.preds
+    assert captured["preds_list"] == args.preds_list
+    assert captured["output_csv"] == args.output
+    assert captured["summary_csv"] == args.summary_output
+    assert captured["threshold"] == args.threshold
+    assert captured["histogram_path"] == args.histogram
+    assert captured["hist_bins"] == args.hist_bins
+
+
 def test_run_dispatches_all_subcommands(monkeypatch) -> None:
     monkeypatch.setattr(cli, "_run_validate", lambda _args: 11)
     monkeypatch.setattr(cli, "_run_preprocess", lambda _args: 22)
     monkeypatch.setattr(cli, "_run_infer", lambda _args: 33)
     monkeypatch.setattr(cli, "_run_dice", lambda _args: 44)
+    monkeypatch.setattr(cli, "_run_lesion_volume", lambda _args: 55)
 
     monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="validate"))
     assert cli.run() == 11
@@ -204,6 +239,9 @@ def test_run_dispatches_all_subcommands(monkeypatch) -> None:
 
     monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="dice"))
     assert cli.run() == 44
+
+    monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="lesion-volume"))
+    assert cli.run() == 55
 
 
 def test_run_unknown_command_raises(monkeypatch) -> None:

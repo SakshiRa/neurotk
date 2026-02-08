@@ -168,12 +168,61 @@ neurotk dice \
   --output outputs/dice_scores.csv
 ```
 
+Lesion volume from predictions:
+```sh
+neurotk lesion-volume \
+  --preds outputs/ \
+  --output outputs/lesion_volumes.csv \
+  --summary-output outputs/lesion_volumes_summary.csv
+```
+
+With histogram:
+```sh
+neurotk lesion-volume \
+  --preds outputs/ \
+  --output outputs/lesion_volumes.csv \
+  --histogram outputs/lesion_volume_hist.png \
+  --hist-bins 30
+```
+
+Output columns:
+- `image`
+- `lesion_voxels`
+- `voxel_volume_mm3`
+- `lesion_volume_mm3`
+- `lesion_volume_ml`
+
+Summary CSV columns:
+- `category` (`range` or `overall`)
+- `metric` (range label or stat name)
+- `count`
+- `percent`
+- `value_ml`
+
+Included overall stats:
+- `total_images`
+- `min_ml`
+- `p25_ml`
+- `median_ml`
+- `p75_ml`
+- `max_ml`
+- `mean_ml`
+
 Key options:
 - `--preds` (optional): one prediction NIfTI file or a directory of predictions.
 - `--preds-list` (optional): text file with one prediction path per line.
 - Use exactly one of `--preds` or `--preds-list`.
 - `--labels-dir` (required): labels directory.
 - `--output` (required): CSV output path for Dice/Hausdorff metrics.
+
+Lesion volume options:
+- `--preds` (optional): one prediction NIfTI file or a directory of predictions.
+- `--preds-list` (optional): text file with one prediction path per line.
+- `--output` (required): CSV output path for lesion volume report.
+- `--summary-output` (optional): CSV output path for lesion-volume range summary.
+- `--threshold` (optional): threshold for binarizing 3D probability maps (default `0.5`).
+- `--histogram` (optional): path to save histogram image of lesion volumes (mL).
+- `--hist-bins` (optional): number of histogram bins (default `30`).
 
 Note: for full-bundle HF usage, the repo must contain a valid MONAI bundle layout (e.g., `configs/` with inference/evaluate config and `models/` checkpoints).
 
