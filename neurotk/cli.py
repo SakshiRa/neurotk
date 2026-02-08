@@ -311,6 +311,11 @@ def _parse_args() -> argparse.Namespace:
     infer_parser.add_argument("--output-dir", required=True, type=Path)
     infer_parser.add_argument("--device", default=None)
     infer_parser.add_argument("--save-probs", action="store_true")
+    infer_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-run inference even if output prediction file already exists.",
+    )
     infer_parser.add_argument("--labels-dir", default=None, type=Path)
     infer_parser.add_argument("--reference-image", default=None, type=Path)
 
@@ -531,6 +536,7 @@ def _run_infer(args: argparse.Namespace) -> int:
                 output_dir=args.output_dir,
                 device=args.device,
                 save_probs=args.save_probs,
+                force=args.force,
                 labels_dir=effective_labels_dir,
                 reference_image=args.reference_image,
             )

@@ -134,6 +134,7 @@ def run_inference(
     output_dir: Path,
     device: Optional[str],
     save_probs: bool,
+    force: bool,
     labels_dir: Optional[Path],
     reference_image: Optional[Path],
 ) -> None:
@@ -153,9 +154,13 @@ def run_inference(
 
     metrics = []
     dice_report_path = output_dir / "dice_scores.csv"
+    skipped_existing = 0
     for image_path in tqdm(inputs, desc="inference"):
-        pred, meta = predictor.predict_volume(os.fspath(image_path))
         out_path = _infer_output_path(output_dir, image_path, "_prob" if save_probs else "_seg")
+        if not force and out_path.exists():
+            skipped_existing += 1
+            continue
+        pred, meta = predictor.predict_volume(os.fspath(image_path))
         pred_arr = _prepare_pred(pred, save_probs)
         if not save_probs:
             if pred_arr.dtype != np.uint8:
@@ -209,3 +214,9 @@ def run_inference(
         print(f"mean_dice,{mean_dice:.4f}")
     elif dice_report_path.exists():
         dice_report_path.unlink()
+
+    if skipped_existing > 0:
+        print(
+            f"Skipped {skipped_existing} input(s) with existing outputs. Use --force to recompute.",
+            file=sys.stderr,
+        )

@@ -133,6 +133,7 @@ Key options:
 - `--output-dir` (required): output directory for predictions.
 - `--device` (optional): inference device (for example `cuda`, `cuda:0`, `mps`, `cpu`).
 - `--save-probs` (optional): save probability output (`*_prob.nii.gz`) instead of segmentation (`*_seg.nii.gz`).
+- `--force` (optional): recompute outputs even if prediction files already exist.
 - `--labels-dir` (optional): labels directory used to compute Dice during inference.
 - `--reference-image` (optional): image whose affine/header are used for saved outputs.
 
@@ -155,6 +156,7 @@ Dice during inference:
 - If `--labels-dir` is omitted and `--input` is a directory, NeuroTK auto-detects sibling labels directories such as `images -> labels` and `imagesTr -> labelsTr`.
 - If labels are not present, Dice is skipped.
 - If `--input` path does not exist, inference fails fast with a clear error.
+- Existing prediction outputs are skipped by default; pass `--force` to recompute.
 
 Dice after inference:
 ```sh
