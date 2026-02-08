@@ -224,6 +224,47 @@ Lesion volume options:
 - `--histogram` (optional): path to save histogram image of lesion volumes (mL).
 - `--hist-bins` (optional): number of histogram bins (default `30`).
 
+Cohort selection stats from original label scans:
+```sh
+neurotk cohort-stats \
+  --labels labelsTr/ \
+  --normal-csv normal_ct_flags.csv \
+  --output cohort_classification.csv \
+  --summary-output cohort_summary.csv \
+  --tn-threshold-ml 0.2 \
+  --low-max-ml 5.0 \
+  --medium-max-ml 20.0
+```
+
+Generate `normal_ct_flags.csv` from original labels:
+```sh
+neurotk make-normal-csv \
+  --labels labelsTr/ \
+  --output normal_ct_flags.csv \
+  --threshold-ml 0.2
+```
+
+Classification rule:
+- `true_negative`: `normal_ct == true` and lesion volume `<= tn-threshold-ml` (default `0.2` mL).
+- `true_positive`: all other cases.
+- True positives are subdivided into `low`, `medium`, `high` by lesion volume.
+
+Cohort stats options:
+- `--labels` (optional): one label NIfTI file or directory of label files.
+- `--labels-list` (optional): text file with one label path per line.
+- `--normal-csv` (required): CSV with normal CT flag. Supported columns include `image`/`id` and `normal_ct`/`normal`/`is_normal`.
+- `--output` (required): per-case classification CSV path.
+- `--summary-output` (required): cohort summary CSV path.
+- `--tn-threshold-ml` (optional): TN threshold in mL (default `0.2`).
+- `--low-max-ml` (optional): upper bound for TP low group (default `5.0`).
+- `--medium-max-ml` (optional): upper bound for TP medium group (default `20.0`).
+
+Normal-CT CSV generator options:
+- `--labels` (optional): one label NIfTI file or directory of label files.
+- `--labels-list` (optional): text file with one label path per line.
+- `--output` (required): output CSV path.
+- `--threshold-ml` (optional): threshold used to set `normal_ct=true` from label lesion volume (default `0.2`).
+
 Note: for full-bundle HF usage, the repo must contain a valid MONAI bundle layout (e.g., `configs/` with inference/evaluate config and `models/` checkpoints).
 
 ## Output

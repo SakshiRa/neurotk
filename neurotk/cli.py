@@ -339,6 +339,22 @@ def _parse_args() -> argparse.Namespace:
     vol_parser.add_argument("--histogram", default=None, type=Path)
     vol_parser.add_argument("--hist-bins", default=30, type=int)
 
+    cohort_parser = subparsers.add_parser("cohort-stats")
+    cohort_parser.add_argument("--labels", default=None, type=Path)
+    cohort_parser.add_argument("--labels-list", default=None, type=Path)
+    cohort_parser.add_argument("--normal-csv", required=True, type=Path)
+    cohort_parser.add_argument("--output", required=True, type=Path)
+    cohort_parser.add_argument("--summary-output", required=True, type=Path)
+    cohort_parser.add_argument("--tn-threshold-ml", default=0.2, type=float)
+    cohort_parser.add_argument("--low-max-ml", default=5.0, type=float)
+    cohort_parser.add_argument("--medium-max-ml", default=20.0, type=float)
+
+    normal_parser = subparsers.add_parser("make-normal-csv")
+    normal_parser.add_argument("--labels", default=None, type=Path)
+    normal_parser.add_argument("--labels-list", default=None, type=Path)
+    normal_parser.add_argument("--output", required=True, type=Path)
+    normal_parser.add_argument("--threshold-ml", default=0.2, type=float)
+
     return parser.parse_args()
 
 
@@ -606,6 +622,52 @@ def _run_lesion_volume(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_cohort_stats(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_cohort_selection_stats
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_cohort_selection_stats(
+            labels_path=args.labels,
+            labels_list=args.labels_list,
+            normal_csv=args.normal_csv,
+            output_csv=args.output,
+            summary_csv=args.summary_output,
+            tn_threshold_ml=args.tn_threshold_ml,
+            low_max_ml=args.low_max_ml,
+            medium_max_ml=args.medium_max_ml,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Cohort selection stats complete")
+    return 0
+
+
+def _run_make_normal_csv(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_make_normal_ct_flags
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_make_normal_ct_flags(
+            labels_path=args.labels,
+            labels_list=args.labels_list,
+            output_csv=args.output,
+            normal_threshold_ml=args.threshold_ml,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Normal CT flag CSV generation complete")
+    return 0
+
+
 def run() -> int:
     args = _parse_args()
     if args.command == "validate":
@@ -618,6 +680,10 @@ def run() -> int:
         return _run_dice(args)
     if args.command == "lesion-volume":
         return _run_lesion_volume(args)
+    if args.command == "cohort-stats":
+        return _run_cohort_stats(args)
+    if args.command == "make-normal-csv":
+        return _run_make_normal_csv(args)
     raise SystemExit(f"Unknown command: {args.command}")
 
 

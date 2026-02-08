@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import os
 import sys
 from pathlib import Path
@@ -107,6 +108,71 @@ def _to_binary_mask(arr: np.ndarray, threshold: float) -> np.ndarray:
         labels = np.argmax(arr, axis=0)
         return labels > 0
     raise ValueError(f"Unsupported prediction array shape for volume computation: {arr.shape}")
+
+
+def _nifti_stem(name: str) -> str:
+    lower = name.lower()
+    if lower.endswith(".nii.gz"):
+        return name[:-7]
+    if lower.endswith(".nii"):
+        return name[:-4]
+    return name
+
+
+def _to_bool(value: str) -> Optional[bool]:
+    v = value.strip().lower()
+    if v in {"1", "true", "t", "yes", "y"}:
+        return True
+    if v in {"0", "false", "f", "no", "n"}:
+        return False
+    return None
+
+
+def _read_normal_ct_map(normal_csv: Path) -> dict:
+    if not normal_csv.exists():
+        raise ValueError(f"Normal CT CSV not found: {normal_csv}")
+    with normal_csv.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            raise ValueError("Normal CT CSV must include a header row")
+        cols = {c.strip().lower(): c for c in reader.fieldnames}
+        id_col = None
+        for cand in ("image", "filename", "id", "case", "subject"):
+            if cand in cols:
+                id_col = cols[cand]
+                break
+        if id_col is None:
+            id_col = reader.fieldnames[0]
+        normal_col = None
+        for cand in ("normal_ct", "normal", "is_normal"):
+            if cand in cols:
+                normal_col = cols[cand]
+                break
+        if normal_col is None:
+            raise ValueError(
+                "Normal CT CSV must include one of columns: normal_ct, normal, is_normal"
+            )
+
+        out = {}
+        for row in reader:
+            raw_id = (row.get(id_col) or "").strip()
+            raw_flag = (row.get(normal_col) or "").strip()
+            if not raw_id:
+                continue
+            is_normal = _to_bool(raw_flag)
+            if is_normal is None:
+                raise ValueError(f"Invalid normal-CT value '{raw_flag}' for row id '{raw_id}'")
+            out[raw_id] = is_normal
+            out[_nifti_stem(raw_id)] = is_normal
+        return out
+
+
+def _label_to_binary(arr: np.ndarray) -> np.ndarray:
+    if arr.ndim == 3:
+        return arr > 0.5
+    if arr.ndim == 4 and arr.shape[-1] == 1:
+        return arr[..., 0] > 0.5
+    raise ValueError(f"Unsupported label shape for lesion volume computation: {arr.shape}")
 
 
 def _volume_range_summary_rows(values_ml: List[float]):
@@ -227,6 +293,135 @@ def run_lesion_volume(
     for image_name, voxels, voxel_mm3, vol_mm3, vol_ml in rows:
         print(f"{image_name},{voxels},{voxel_mm3:.6f},{vol_mm3:.6f},{vol_ml:.6f}")
     print(f"Saved lesion volume summary: {summary_csv}")
+
+
+def run_cohort_selection_stats(
+    *,
+    labels_path: Optional[Path],
+    labels_list: Optional[Path],
+    normal_csv: Path,
+    output_csv: Path,
+    summary_csv: Path,
+    tn_threshold_ml: float = 0.2,
+    low_max_ml: float = 5.0,
+    medium_max_ml: float = 20.0,
+) -> None:
+    labels = _resolve_inputs(labels_path, labels_list)
+    if not labels:
+        raise ValueError("No label files found")
+    normal_map = _read_normal_ct_map(normal_csv)
+
+    rows = []
+    for label_path in tqdm(labels, desc="cohort-stats"):
+        img = nib.load(os.fspath(label_path))
+        arr = img.get_fdata(dtype=np.float32)
+        mask = _label_to_binary(arr)
+        spacing = img.header.get_zooms()[:3]
+        voxel_volume_mm3 = float(spacing[0] * spacing[1] * spacing[2])
+        lesion_voxels = int(np.count_nonzero(mask))
+        lesion_volume_ml = (lesion_voxels * voxel_volume_mm3) / 1000.0
+
+        name = label_path.name
+        stem = _nifti_stem(name)
+        if name in normal_map:
+            is_normal_ct = normal_map[name]
+        elif stem in normal_map:
+            is_normal_ct = normal_map[stem]
+        else:
+            raise ValueError(
+                f"No normal-CT record found for label '{name}'. Add row to {normal_csv}."
+            )
+
+        if is_normal_ct and lesion_volume_ml <= tn_threshold_ml:
+            cls = "true_negative"
+            subgroup = ""
+        else:
+            cls = "true_positive"
+            if lesion_volume_ml < low_max_ml:
+                subgroup = "low"
+            elif lesion_volume_ml < medium_max_ml:
+                subgroup = "medium"
+            else:
+                subgroup = "high"
+
+        rows.append((name, stem, is_normal_ct, lesion_voxels, lesion_volume_ml, cls, subgroup))
+
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open("w", encoding="utf-8") as f:
+        f.write(
+            "image,case_id,normal_ct,lesion_voxels,lesion_volume_ml,classification,tp_volume_subgroup\n"
+        )
+        for name, stem, is_normal, voxels, vol_ml, cls, subgroup in rows:
+            f.write(
+                f"{name},{stem},{str(is_normal).lower()},{voxels},{vol_ml:.6f},{cls},{subgroup}\n"
+            )
+
+    total = len(rows)
+    tn = sum(1 for r in rows if r[5] == "true_negative")
+    tp = sum(1 for r in rows if r[5] == "true_positive")
+    tp_low = sum(1 for r in rows if r[5] == "true_positive" and r[6] == "low")
+    tp_med = sum(1 for r in rows if r[5] == "true_positive" and r[6] == "medium")
+    tp_high = sum(1 for r in rows if r[5] == "true_positive" and r[6] == "high")
+
+    metrics = [
+        ("total", total),
+        ("true_negative", tn),
+        ("true_positive", tp),
+        ("tp_low", tp_low),
+        ("tp_medium", tp_med),
+        ("tp_high", tp_high),
+    ]
+    summary_csv.parent.mkdir(parents=True, exist_ok=True)
+    with summary_csv.open("w", encoding="utf-8") as f:
+        f.write("metric,count,percent\n")
+        for metric, count in metrics:
+            pct = (100.0 * count / total) if total else 0.0
+            f.write(f"{metric},{count},{pct:.2f}\n")
+
+    print("metric,count,percent")
+    for metric, count in metrics:
+        pct = (100.0 * count / total) if total else 0.0
+        print(f"{metric},{count},{pct:.2f}")
+    print(f"Saved cohort classification: {output_csv}")
+    print(f"Saved cohort summary: {summary_csv}")
+
+
+def run_make_normal_ct_flags(
+    *,
+    labels_path: Optional[Path],
+    labels_list: Optional[Path],
+    output_csv: Path,
+    normal_threshold_ml: float = 0.2,
+) -> None:
+    labels = _resolve_inputs(labels_path, labels_list)
+    if not labels:
+        raise ValueError("No label files found")
+
+    rows = []
+    for label_path in tqdm(labels, desc="normal-ct-flags"):
+        img = nib.load(os.fspath(label_path))
+        arr = img.get_fdata(dtype=np.float32)
+        mask = _label_to_binary(arr)
+        spacing = img.header.get_zooms()[:3]
+        voxel_volume_mm3 = float(spacing[0] * spacing[1] * spacing[2])
+        lesion_voxels = int(np.count_nonzero(mask))
+        lesion_volume_ml = (lesion_voxels * voxel_volume_mm3) / 1000.0
+        normal_ct = lesion_volume_ml <= normal_threshold_ml
+        rows.append((label_path.name, _nifti_stem(label_path.name), normal_ct, lesion_volume_ml))
+
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open("w", encoding="utf-8") as f:
+        f.write("image,case_id,normal_ct,lesion_volume_ml\n")
+        for image, case_id, normal_ct, vol_ml in rows:
+            f.write(f"{image},{case_id},{str(normal_ct).lower()},{vol_ml:.6f}\n")
+
+    n_true = sum(1 for _, _, normal_ct, _ in rows if normal_ct)
+    n_false = len(rows) - n_true
+    print("metric,count")
+    print(f"total,{len(rows)}")
+    print(f"normal_ct_true,{n_true}")
+    print(f"normal_ct_false,{n_false}")
+    print(f"Saved normal CT flags: {output_csv}")
 
 
 def _infer_output_path(output_dir: Path, image_path: Path, suffix: str) -> Path:
