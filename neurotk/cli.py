@@ -316,6 +316,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Re-run inference even if output prediction file already exists.",
     )
+    infer_parser.add_argument(
+        "--skip-invalid-inputs",
+        action="store_true",
+        help="Skip files that fail inference and continue with remaining inputs.",
+    )
     infer_parser.add_argument("--labels-dir", default=None, type=Path)
     infer_parser.add_argument("--reference-image", default=None, type=Path)
 
@@ -324,6 +329,36 @@ def _parse_args() -> argparse.Namespace:
     dice_parser.add_argument("--preds-list", default=None, type=Path)
     dice_parser.add_argument("--labels-dir", required=True, type=Path)
     dice_parser.add_argument("--output", required=True, type=Path)
+
+    vol_parser = subparsers.add_parser("lesion-volume")
+    vol_parser.add_argument("--preds", default=None, type=Path)
+    vol_parser.add_argument("--preds-list", default=None, type=Path)
+    vol_parser.add_argument("--output", required=True, type=Path)
+    vol_parser.add_argument("--summary-output", default=None, type=Path)
+    vol_parser.add_argument("--threshold", default=0.5, type=float)
+    vol_parser.add_argument("--histogram", default=None, type=Path)
+    vol_parser.add_argument("--hist-bins", default=30, type=int)
+
+    cohort_parser = subparsers.add_parser("cohort-stats")
+    cohort_parser.add_argument("--labels", default=None, type=Path)
+    cohort_parser.add_argument("--labels-list", default=None, type=Path)
+    cohort_parser.add_argument("--normal-csv", required=True, type=Path)
+    cohort_parser.add_argument("--output", required=True, type=Path)
+    cohort_parser.add_argument("--summary-output", required=True, type=Path)
+    cohort_parser.add_argument("--tn-threshold-ml", default=0.2, type=float)
+    cohort_parser.add_argument("--low-max-ml", default=5.0, type=float)
+    cohort_parser.add_argument("--medium-max-ml", default=20.0, type=float)
+
+    normal_parser = subparsers.add_parser("make-normal-csv")
+    normal_parser.add_argument("--images", default=None, type=Path)
+    normal_parser.add_argument("--images-list", default=None, type=Path)
+    normal_parser.add_argument("--labels", default=None, type=Path)
+    normal_parser.add_argument("--labels-list", default=None, type=Path)
+    normal_parser.add_argument("--output", required=True, type=Path)
+    normal_parser.add_argument("--threshold-ml", default=0.2, type=float)
+    normal_parser.add_argument("--train-selection-json", default=None, type=Path)
+    normal_parser.add_argument("--train-min-lesion-ml", default=1.0, type=float)
+    normal_parser.add_argument("--num-folds", default=5, type=int)
 
     return parser.parse_args()
 
@@ -537,6 +572,7 @@ def _run_infer(args: argparse.Namespace) -> int:
                 device=args.device,
                 save_probs=args.save_probs,
                 force=args.force,
+                skip_invalid_inputs=args.skip_invalid_inputs,
                 labels_dir=effective_labels_dir,
                 reference_image=args.reference_image,
             )
@@ -567,6 +603,81 @@ def _run_dice(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_lesion_volume(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_lesion_volume
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_lesion_volume(
+            preds_path=args.preds,
+            preds_list=args.preds_list,
+            output_csv=args.output,
+            summary_csv=args.summary_output,
+            threshold=args.threshold,
+            histogram_path=args.histogram,
+            hist_bins=args.hist_bins,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Lesion volume computation complete")
+    return 0
+
+
+def _run_cohort_stats(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_cohort_selection_stats
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_cohort_selection_stats(
+            labels_path=args.labels,
+            labels_list=args.labels_list,
+            normal_csv=args.normal_csv,
+            output_csv=args.output,
+            summary_csv=args.summary_output,
+            tn_threshold_ml=args.tn_threshold_ml,
+            low_max_ml=args.low_max_ml,
+            medium_max_ml=args.medium_max_ml,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Cohort selection stats complete")
+    return 0
+
+
+def _run_make_normal_csv(args: argparse.Namespace) -> int:
+    try:
+        from .inference.runner import run_make_normal_ct_flags
+    except ImportError as exc:
+        raise SystemExit(
+            "Inference dependencies are missing. Install with `pip install neurotk[inference]`."
+        ) from exc
+
+    try:
+        run_make_normal_ct_flags(
+            labels_path=args.labels,
+            labels_list=args.labels_list,
+            images_path=args.images,
+            images_list=args.images_list,
+            output_csv=args.output,
+            normal_threshold_ml=args.threshold_ml,
+            train_selection_json=args.train_selection_json,
+            train_min_lesion_ml=args.train_min_lesion_ml,
+            num_folds=args.num_folds,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    print("Normal CT flag CSV generation complete")
+    return 0
+
+
 def run() -> int:
     args = _parse_args()
     if args.command == "validate":
@@ -577,6 +688,12 @@ def run() -> int:
         return _run_infer(args)
     if args.command == "dice":
         return _run_dice(args)
+    if args.command == "lesion-volume":
+        return _run_lesion_volume(args)
+    if args.command == "cohort-stats":
+        return _run_cohort_stats(args)
+    if args.command == "make-normal-csv":
+        return _run_make_normal_csv(args)
     raise SystemExit(f"Unknown command: {args.command}")
 
 

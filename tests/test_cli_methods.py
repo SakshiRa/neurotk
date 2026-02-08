@@ -58,6 +58,7 @@ def test_run_infer_invokes_runner_with_default_bundle(monkeypatch, tmp_path: Pat
         device="cpu",
         save_probs=True,
         force=False,
+        skip_invalid_inputs=False,
         labels_dir=tmp_path / "labels",
         reference_image=tmp_path / "ref.nii.gz",
     )
@@ -71,6 +72,7 @@ def test_run_infer_invokes_runner_with_default_bundle(monkeypatch, tmp_path: Pat
     assert captured["device"] == "cpu"
     assert captured["save_probs"] is True
     assert captured["force"] is False
+    assert captured["skip_invalid_inputs"] is False
     assert captured["labels_dir"] == args.labels_dir
     assert captured["reference_image"] == args.reference_image
 
@@ -90,6 +92,7 @@ def test_run_infer_wraps_value_error_as_system_exit(monkeypatch, tmp_path: Path)
         device=None,
         save_probs=False,
         force=False,
+        skip_invalid_inputs=False,
         labels_dir=None,
         reference_image=None,
     )
@@ -120,6 +123,7 @@ def test_run_infer_autodetects_labels_dir_from_images_input(monkeypatch, tmp_pat
         device=None,
         save_probs=False,
         force=False,
+        skip_invalid_inputs=False,
         labels_dir=None,
         reference_image=None,
     )
@@ -149,6 +153,7 @@ def test_run_infer_skips_labels_when_autodetect_finds_none(monkeypatch, tmp_path
         device=None,
         save_probs=False,
         force=False,
+        skip_invalid_inputs=False,
         labels_dir=None,
         reference_image=None,
     )
@@ -182,11 +187,125 @@ def test_run_dice_invokes_runner(monkeypatch, tmp_path: Path) -> None:
     assert captured["output_csv"] == args.output
 
 
+def test_run_lesion_volume_invokes_runner(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_lesion_volume(**kwargs):
+        captured.update(kwargs)
+
+    fake_runner = SimpleNamespace(
+        run_inference=lambda **_: None,
+        run_dice=lambda **_: None,
+        run_lesion_volume=fake_run_lesion_volume,
+    )
+    monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
+
+    args = SimpleNamespace(
+        preds=tmp_path / "preds",
+        preds_list=tmp_path / "preds.txt",
+        output=tmp_path / "volumes.csv",
+        summary_output=tmp_path / "volumes_summary.csv",
+        threshold=0.25,
+        histogram=tmp_path / "hist.png",
+        hist_bins=25,
+    )
+
+    rc = cli._run_lesion_volume(args)
+    assert rc == 0
+    assert captured["preds_path"] == args.preds
+    assert captured["preds_list"] == args.preds_list
+    assert captured["output_csv"] == args.output
+    assert captured["summary_csv"] == args.summary_output
+    assert captured["threshold"] == args.threshold
+    assert captured["histogram_path"] == args.histogram
+    assert captured["hist_bins"] == args.hist_bins
+
+
+def test_run_cohort_stats_invokes_runner(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_cohort_selection_stats(**kwargs):
+        captured.update(kwargs)
+
+    fake_runner = SimpleNamespace(
+        run_inference=lambda **_: None,
+        run_dice=lambda **_: None,
+        run_lesion_volume=lambda **_: None,
+        run_cohort_selection_stats=fake_run_cohort_selection_stats,
+    )
+    monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
+
+    args = SimpleNamespace(
+        labels=tmp_path / "labels",
+        labels_list=tmp_path / "labels.txt",
+        normal_csv=tmp_path / "normal.csv",
+        output=tmp_path / "cohort.csv",
+        summary_output=tmp_path / "cohort_summary.csv",
+        tn_threshold_ml=0.2,
+        low_max_ml=5.0,
+        medium_max_ml=20.0,
+    )
+
+    rc = cli._run_cohort_stats(args)
+    assert rc == 0
+    assert captured["labels_path"] == args.labels
+    assert captured["labels_list"] == args.labels_list
+    assert captured["normal_csv"] == args.normal_csv
+    assert captured["output_csv"] == args.output
+    assert captured["summary_csv"] == args.summary_output
+    assert captured["tn_threshold_ml"] == args.tn_threshold_ml
+    assert captured["low_max_ml"] == args.low_max_ml
+    assert captured["medium_max_ml"] == args.medium_max_ml
+
+
+def test_run_make_normal_csv_invokes_runner(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_make_normal_ct_flags(**kwargs):
+        captured.update(kwargs)
+
+    fake_runner = SimpleNamespace(
+        run_inference=lambda **_: None,
+        run_dice=lambda **_: None,
+        run_lesion_volume=lambda **_: None,
+        run_cohort_selection_stats=lambda **_: None,
+        run_make_normal_ct_flags=fake_run_make_normal_ct_flags,
+    )
+    monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
+
+    args = SimpleNamespace(
+        images=tmp_path / "images",
+        images_list=tmp_path / "images.txt",
+        labels=tmp_path / "labels",
+        labels_list=tmp_path / "labels.txt",
+        output=tmp_path / "normal_ct_flags.csv",
+        threshold_ml=0.2,
+        train_selection_json=tmp_path / "train_selection.json",
+        train_min_lesion_ml=1.0,
+        num_folds=5,
+    )
+
+    rc = cli._run_make_normal_csv(args)
+    assert rc == 0
+    assert captured["images_path"] == args.images
+    assert captured["images_list"] == args.images_list
+    assert captured["labels_path"] == args.labels
+    assert captured["labels_list"] == args.labels_list
+    assert captured["output_csv"] == args.output
+    assert captured["normal_threshold_ml"] == args.threshold_ml
+    assert captured["train_selection_json"] == args.train_selection_json
+    assert captured["train_min_lesion_ml"] == args.train_min_lesion_ml
+    assert captured["num_folds"] == args.num_folds
+
+
 def test_run_dispatches_all_subcommands(monkeypatch) -> None:
     monkeypatch.setattr(cli, "_run_validate", lambda _args: 11)
     monkeypatch.setattr(cli, "_run_preprocess", lambda _args: 22)
     monkeypatch.setattr(cli, "_run_infer", lambda _args: 33)
     monkeypatch.setattr(cli, "_run_dice", lambda _args: 44)
+    monkeypatch.setattr(cli, "_run_lesion_volume", lambda _args: 55)
+    monkeypatch.setattr(cli, "_run_cohort_stats", lambda _args: 66)
+    monkeypatch.setattr(cli, "_run_make_normal_csv", lambda _args: 77)
 
     monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="validate"))
     assert cli.run() == 11
@@ -199,6 +318,15 @@ def test_run_dispatches_all_subcommands(monkeypatch) -> None:
 
     monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="dice"))
     assert cli.run() == 44
+
+    monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="lesion-volume"))
+    assert cli.run() == 55
+
+    monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="cohort-stats"))
+    assert cli.run() == 66
+
+    monkeypatch.setattr(cli, "_parse_args", lambda: SimpleNamespace(command="make-normal-csv"))
+    assert cli.run() == 77
 
 
 def test_run_unknown_command_raises(monkeypatch) -> None:

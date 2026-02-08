@@ -134,6 +134,7 @@ Key options:
 - `--device` (optional): inference device (for example `cuda`, `cuda:0`, `mps`, `cpu`).
 - `--save-probs` (optional): save probability output (`*_prob.nii.gz`) instead of segmentation (`*_seg.nii.gz`).
 - `--force` (optional): recompute outputs even if prediction files already exist.
+- `--skip-invalid-inputs` (optional): continue inference by skipping files that fail (for example incompatible channels/dimensions).
 - `--labels-dir` (optional): labels directory used to compute Dice during inference.
 - `--reference-image` (optional): image whose affine/header are used for saved outputs.
 
@@ -157,6 +158,7 @@ Dice during inference:
 - If labels are not present, Dice is skipped.
 - If `--input` path does not exist, inference fails fast with a clear error.
 - Existing prediction outputs are skipped by default; pass `--force` to recompute.
+- With `--skip-invalid-inputs`, invalid files are skipped and recorded in `outputs/skipped_inputs.csv`.
 
 Dice after inference:
 ```sh
@@ -166,12 +168,117 @@ neurotk dice \
   --output outputs/dice_scores.csv
 ```
 
+Lesion volume from predictions:
+```sh
+neurotk lesion-volume \
+  --preds outputs/ \
+  --output outputs/lesion_volumes.csv \
+  --summary-output outputs/lesion_volumes_summary.csv
+```
+
+With histogram:
+```sh
+neurotk lesion-volume \
+  --preds outputs/ \
+  --output outputs/lesion_volumes.csv \
+  --histogram outputs/lesion_volume_hist.png \
+  --hist-bins 30
+```
+
+Output columns:
+- `image`
+- `lesion_voxels`
+- `voxel_volume_mm3`
+- `lesion_volume_mm3`
+- `lesion_volume_ml`
+
+Summary CSV columns:
+- `category` (`range` or `overall`)
+- `metric` (range label or stat name)
+- `count`
+- `percent`
+- `value_ml`
+
+Included overall stats:
+- `total_images`
+- `min_ml`
+- `p25_ml`
+- `median_ml`
+- `p75_ml`
+- `max_ml`
+- `mean_ml`
+
 Key options:
 - `--preds` (optional): one prediction NIfTI file or a directory of predictions.
 - `--preds-list` (optional): text file with one prediction path per line.
 - Use exactly one of `--preds` or `--preds-list`.
 - `--labels-dir` (required): labels directory.
 - `--output` (required): CSV output path for Dice/Hausdorff metrics.
+
+Lesion volume options:
+- `--preds` (optional): one prediction NIfTI file or a directory of predictions.
+- `--preds-list` (optional): text file with one prediction path per line.
+- `--output` (required): CSV output path for lesion volume report.
+- `--summary-output` (optional): CSV output path for lesion-volume range summary.
+- `--threshold` (optional): threshold for binarizing 3D probability maps (default `0.5`).
+- `--histogram` (optional): path to save histogram image of lesion volumes (mL).
+- `--hist-bins` (optional): number of histogram bins (default `30`).
+
+Cohort selection stats from original label scans:
+```sh
+neurotk cohort-stats \
+  --labels labelsTr/ \
+  --normal-csv normal_ct_flags.csv \
+  --output cohort_classification.csv \
+  --summary-output cohort_summary.csv \
+  --tn-threshold-ml 0.2 \
+  --low-max-ml 5.0 \
+  --medium-max-ml 20.0
+```
+
+Generate `normal_ct_flags.csv` from original labels:
+```sh
+neurotk make-normal-csv \
+  --images imagesTr/ \
+  --labels labelsTr/ \
+  --output normal_ct_flags.csv \
+  --threshold-ml 0.2 \
+  --train-selection-json train_selection.json \
+  --train-min-lesion-ml 1.0
+```
+
+Classification rule:
+- `true_negative`: `normal_ct == true` and lesion volume `<= tn-threshold-ml` (default `0.2` mL).
+- `true_positive`: all other cases.
+- True positives are subdivided into `low`, `medium`, `high` by lesion volume.
+
+Cohort stats options:
+- `--labels` (optional): one label NIfTI file or directory of label files.
+- `--labels-list` (optional): text file with one label path per line.
+- `--normal-csv` (required): CSV with normal CT flag. Supported columns include `image`/`id` and `normal_ct`/`normal`/`is_normal`.
+- `--output` (required): per-case classification CSV path.
+- `--summary-output` (required): cohort summary CSV path.
+- `--tn-threshold-ml` (optional): TN threshold in mL (default `0.2`).
+- `--low-max-ml` (optional): upper bound for TP low group (default `5.0`).
+- `--medium-max-ml` (optional): upper bound for TP medium group (default `20.0`).
+
+Normal-CT CSV generator options:
+- `--images` (optional): one image NIfTI file or directory of image files (required when `--train-selection-json` is used).
+- `--images-list` (optional): text file with one image path per line (required alternative to `--images` for train JSON).
+- `--labels` (optional): one label NIfTI file or directory of label files.
+- `--labels-list` (optional): text file with one label path per line.
+- `--output` (required): output CSV path.
+- `--threshold-ml` (optional): threshold used to set `normal_ct=true` from label lesion volume (default `0.2`).
+- `--train-selection-json` (optional): write MONAI datalist-style JSON for selected training cases.
+- `--train-min-lesion-ml` (optional): include only labels with lesion volume `>` this threshold in training JSON (default `1.0`).
+- `--num-folds` (optional): number of CV folds for assigning `fold` in training entries (default `5`).
+
+Train-selection JSON structure (MONAI-style):
+- `description`
+- `labels`
+- `training` with `{image, label, fold}`
+- `validation` (empty by default)
+- `testing` with `{image}`
 
 Note: for full-bundle HF usage, the repo must contain a valid MONAI bundle layout (e.g., `configs/` with inference/evaluate config and `models/` checkpoints).
 
