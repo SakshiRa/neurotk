@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -116,6 +117,15 @@ def _prepare_pred(pred: torch.Tensor, save_probs: bool) -> np.ndarray:
     return pred.cpu().numpy()
 
 
+def _effective_device_name(device: Optional[str]) -> str:
+    if device is not None:
+        try:
+            return str(torch.device(device))
+        except Exception:
+            return device
+    return "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
 def run_inference(
     *,
     bundle_dir: Union[str, Path],
@@ -124,11 +134,18 @@ def run_inference(
     output_dir: Path,
     device: Optional[str],
     save_probs: bool,
+    force: bool,
     labels_dir: Optional[Path],
     reference_image: Optional[Path],
 ) -> None:
     bundle_dir = Path(resolve_bundle_dir(os.fspath(bundle_dir)))
     output_dir.mkdir(parents=True, exist_ok=True)
+    effective_device = _effective_device_name(device)
+    if effective_device == "cpu":
+        print(
+            "Warning: running inference on CPU. This may be slow; use --device cuda or --device mps if available.",
+            file=sys.stderr,
+        )
     if labels_dir is not None and (not labels_dir.exists() or not labels_dir.is_dir()):
         labels_dir = None
 
@@ -137,9 +154,13 @@ def run_inference(
 
     metrics = []
     dice_report_path = output_dir / "dice_scores.csv"
+    skipped_existing = 0
     for image_path in tqdm(inputs, desc="inference"):
-        pred, meta = predictor.predict_volume(os.fspath(image_path))
         out_path = _infer_output_path(output_dir, image_path, "_prob" if save_probs else "_seg")
+        if not force and out_path.exists():
+            skipped_existing += 1
+            continue
+        pred, meta = predictor.predict_volume(os.fspath(image_path))
         pred_arr = _prepare_pred(pred, save_probs)
         if not save_probs:
             if pred_arr.dtype != np.uint8:
@@ -193,3 +214,9 @@ def run_inference(
         print(f"mean_dice,{mean_dice:.4f}")
     elif dice_report_path.exists():
         dice_report_path.unlink()
+
+    if skipped_existing > 0:
+        print(
+            f"Skipped {skipped_existing} input(s) with existing outputs. Use --force to recompute.",
+            file=sys.stderr,
+        )

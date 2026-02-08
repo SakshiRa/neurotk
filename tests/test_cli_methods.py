@@ -57,6 +57,7 @@ def test_run_infer_invokes_runner_with_default_bundle(monkeypatch, tmp_path: Pat
         output_dir=tmp_path / "preds",
         device="cpu",
         save_probs=True,
+        force=False,
         labels_dir=tmp_path / "labels",
         reference_image=tmp_path / "ref.nii.gz",
     )
@@ -69,6 +70,7 @@ def test_run_infer_invokes_runner_with_default_bundle(monkeypatch, tmp_path: Pat
     assert captured["output_dir"] == args.output_dir
     assert captured["device"] == "cpu"
     assert captured["save_probs"] is True
+    assert captured["force"] is False
     assert captured["labels_dir"] == args.labels_dir
     assert captured["reference_image"] == args.reference_image
 
@@ -87,6 +89,7 @@ def test_run_infer_wraps_value_error_as_system_exit(monkeypatch, tmp_path: Path)
         output_dir=tmp_path / "preds",
         device=None,
         save_probs=False,
+        force=False,
         labels_dir=None,
         reference_image=None,
     )
@@ -116,6 +119,7 @@ def test_run_infer_autodetects_labels_dir_from_images_input(monkeypatch, tmp_pat
         output_dir=tmp_path / "preds",
         device=None,
         save_probs=False,
+        force=False,
         labels_dir=None,
         reference_image=None,
     )
@@ -144,6 +148,7 @@ def test_run_infer_skips_labels_when_autodetect_finds_none(monkeypatch, tmp_path
         output_dir=tmp_path / "preds",
         device=None,
         save_probs=False,
+        force=False,
         labels_dir=None,
         reference_image=None,
     )
