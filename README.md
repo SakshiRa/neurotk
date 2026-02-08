@@ -239,9 +239,12 @@ neurotk cohort-stats \
 Generate `normal_ct_flags.csv` from original labels:
 ```sh
 neurotk make-normal-csv \
+  --images imagesTr/ \
   --labels labelsTr/ \
   --output normal_ct_flags.csv \
-  --threshold-ml 0.2
+  --threshold-ml 0.2 \
+  --train-selection-json train_selection.json \
+  --train-min-lesion-ml 1.0
 ```
 
 Classification rule:
@@ -260,10 +263,22 @@ Cohort stats options:
 - `--medium-max-ml` (optional): upper bound for TP medium group (default `20.0`).
 
 Normal-CT CSV generator options:
+- `--images` (optional): one image NIfTI file or directory of image files (required when `--train-selection-json` is used).
+- `--images-list` (optional): text file with one image path per line (required alternative to `--images` for train JSON).
 - `--labels` (optional): one label NIfTI file or directory of label files.
 - `--labels-list` (optional): text file with one label path per line.
 - `--output` (required): output CSV path.
 - `--threshold-ml` (optional): threshold used to set `normal_ct=true` from label lesion volume (default `0.2`).
+- `--train-selection-json` (optional): write MONAI datalist-style JSON for selected training cases.
+- `--train-min-lesion-ml` (optional): include only labels with lesion volume `>` this threshold in training JSON (default `1.0`).
+- `--num-folds` (optional): number of CV folds for assigning `fold` in training entries (default `5`).
+
+Train-selection JSON structure (MONAI-style):
+- `description`
+- `labels`
+- `training` with `{image, label, fold}`
+- `validation` (empty by default)
+- `testing` with `{image}`
 
 Note: for full-bundle HF usage, the repo must contain a valid MONAI bundle layout (e.g., `configs/` with inference/evaluate config and `models/` checkpoints).
 

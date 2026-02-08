@@ -274,18 +274,28 @@ def test_run_make_normal_csv_invokes_runner(monkeypatch, tmp_path: Path) -> None
     monkeypatch.setitem(sys.modules, "neurotk.inference.runner", fake_runner)
 
     args = SimpleNamespace(
+        images=tmp_path / "images",
+        images_list=tmp_path / "images.txt",
         labels=tmp_path / "labels",
         labels_list=tmp_path / "labels.txt",
         output=tmp_path / "normal_ct_flags.csv",
         threshold_ml=0.2,
+        train_selection_json=tmp_path / "train_selection.json",
+        train_min_lesion_ml=1.0,
+        num_folds=5,
     )
 
     rc = cli._run_make_normal_csv(args)
     assert rc == 0
+    assert captured["images_path"] == args.images
+    assert captured["images_list"] == args.images_list
     assert captured["labels_path"] == args.labels
     assert captured["labels_list"] == args.labels_list
     assert captured["output_csv"] == args.output
     assert captured["normal_threshold_ml"] == args.threshold_ml
+    assert captured["train_selection_json"] == args.train_selection_json
+    assert captured["train_min_lesion_ml"] == args.train_min_lesion_ml
+    assert captured["num_folds"] == args.num_folds
 
 
 def test_run_dispatches_all_subcommands(monkeypatch) -> None:

@@ -350,10 +350,15 @@ def _parse_args() -> argparse.Namespace:
     cohort_parser.add_argument("--medium-max-ml", default=20.0, type=float)
 
     normal_parser = subparsers.add_parser("make-normal-csv")
+    normal_parser.add_argument("--images", default=None, type=Path)
+    normal_parser.add_argument("--images-list", default=None, type=Path)
     normal_parser.add_argument("--labels", default=None, type=Path)
     normal_parser.add_argument("--labels-list", default=None, type=Path)
     normal_parser.add_argument("--output", required=True, type=Path)
     normal_parser.add_argument("--threshold-ml", default=0.2, type=float)
+    normal_parser.add_argument("--train-selection-json", default=None, type=Path)
+    normal_parser.add_argument("--train-min-lesion-ml", default=1.0, type=float)
+    normal_parser.add_argument("--num-folds", default=5, type=int)
 
     return parser.parse_args()
 
@@ -659,8 +664,13 @@ def _run_make_normal_csv(args: argparse.Namespace) -> int:
         run_make_normal_ct_flags(
             labels_path=args.labels,
             labels_list=args.labels_list,
+            images_path=args.images,
+            images_list=args.images_list,
             output_csv=args.output,
             normal_threshold_ml=args.threshold_ml,
+            train_selection_json=args.train_selection_json,
+            train_min_lesion_ml=args.train_min_lesion_ml,
+            num_folds=args.num_folds,
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc

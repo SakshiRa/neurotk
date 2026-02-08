@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import os
 import sys
 from pathlib import Path
@@ -390,14 +391,41 @@ def run_make_normal_ct_flags(
     *,
     labels_path: Optional[Path],
     labels_list: Optional[Path],
+    images_path: Optional[Path],
+    images_list: Optional[Path],
     output_csv: Path,
     normal_threshold_ml: float = 0.2,
+    train_selection_json: Optional[Path] = None,
+    train_min_lesion_ml: float = 1.0,
+    num_folds: int = 5,
 ) -> None:
     labels = _resolve_inputs(labels_path, labels_list)
     if not labels:
         raise ValueError("No label files found")
 
+    image_index = None
+    unmatched_label_count = 0
+    unmatched_image_count = 0
+    matched_pair_count = 0
+    if train_selection_json is not None:
+        images = _resolve_inputs(images_path, images_list)
+        if not images:
+            raise ValueError(
+                "Provide --images or --images-list when --train-selection-json is requested"
+            )
+        image_index = {_nifti_stem(p.name): p for p in images}
+        label_stems = {_nifti_stem(p.name) for p in labels}
+        label_matchable_stems = set(label_stems)
+        for stem in list(label_stems):
+            if stem.endswith("_seg"):
+                label_matchable_stems.add(stem[:-4])
+        image_stems = set(image_index.keys())
+        # Inner-join semantics: only image/label pairs with matching stems are eligible.
+        unmatched_image_count = len(image_stems - label_matchable_stems)
+        matched_pair_count = len(image_stems & label_matchable_stems)
+
     rows = []
+    selected_for_train = []
     for label_path in tqdm(labels, desc="normal-ct-flags"):
         img = nib.load(os.fspath(label_path))
         arr = img.get_fdata(dtype=np.float32)
@@ -407,7 +435,32 @@ def run_make_normal_ct_flags(
         lesion_voxels = int(np.count_nonzero(mask))
         lesion_volume_ml = (lesion_voxels * voxel_volume_mm3) / 1000.0
         normal_ct = lesion_volume_ml <= normal_threshold_ml
-        rows.append((label_path.name, _nifti_stem(label_path.name), normal_ct, lesion_volume_ml))
+        case_id = _nifti_stem(label_path.name)
+        rows.append((label_path.name, case_id, normal_ct, lesion_volume_ml))
+        if lesion_volume_ml > train_min_lesion_ml:
+            if image_index is None:
+                raise ValueError(
+                    "Internal error: image index missing while writing train selection JSON"
+                )
+            image_stem_candidates = [case_id]
+            if case_id.endswith("_seg"):
+                image_stem_candidates.append(case_id[:-4])
+            image_path = None
+            for cand in image_stem_candidates:
+                if cand in image_index:
+                    image_path = image_index[cand]
+                    break
+            if image_path is None:
+                unmatched_label_count += 1
+                continue
+            selected_for_train.append(
+                {
+                    "case_id": case_id,
+                    "image": os.fspath(image_path.resolve()),
+                    "label": os.fspath(label_path.resolve()),
+                    "lesion_volume_ml": round(float(lesion_volume_ml), 6),
+                }
+            )
 
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     with output_csv.open("w", encoding="utf-8") as f:
@@ -422,6 +475,41 @@ def run_make_normal_ct_flags(
     print(f"normal_ct_true,{n_true}")
     print(f"normal_ct_false,{n_false}")
     print(f"Saved normal CT flags: {output_csv}")
+
+    if train_selection_json is not None:
+        train_selection_json.parent.mkdir(parents=True, exist_ok=True)
+        folds = max(int(num_folds), 1)
+        training_items = [
+            {
+                "image": item["image"],
+                "label": item["label"],
+                "fold": idx % folds,
+            }
+            for idx, item in enumerate(sorted(selected_for_train, key=lambda x: x["case_id"]))
+        ]
+        testing_items = [{"image": item["image"]} for item in training_items]
+        payload = {
+            "description": "TBI dataset",
+            "labels": {"0": "background", "1": "lesion"},
+            "numTotalMatchedImages": matched_pair_count,
+            "numSelectedByLesionThreshold": len(training_items),
+            "numTraining": len(training_items),
+            "numValidation": 0,
+            "numTesting": len(testing_items),
+            "training": training_items,
+            "validation": [],
+            "testing": testing_items,
+        }
+        with train_selection_json.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        print(f"Saved train selection JSON: {train_selection_json}")
+        if unmatched_label_count > 0 or unmatched_image_count > 0:
+            print(
+                "Train-selection inner join excluded unmatched files: "
+                f"labels_without_image={unmatched_label_count}, "
+                f"images_without_label={unmatched_image_count}",
+                file=sys.stderr,
+            )
 
 
 def _infer_output_path(output_dir: Path, image_path: Path, suffix: str) -> Path:
