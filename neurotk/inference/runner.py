@@ -4,13 +4,13 @@ import csv
 import json
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import List, Optional, Union
 
 import nibabel as nib
 import numpy as np
 import torch
-from monai.transforms import Resize
 from tqdm import tqdm
 
 from .config import resolve_bundle_dir
@@ -76,8 +76,13 @@ def run_dice(
         pred_mask = torch.as_tensor(pred_np > 0.5)
         label_mask = torch.as_tensor(label_np > 0.5)
         if pred_mask.shape != label_mask.shape:
-            resize = Resize(spatial_size=pred_mask.shape, mode="nearest")
-            label_mask = resize(label_mask.unsqueeze(0).unsqueeze(0))[0, 0]
+            warnings.warn(
+                f"Skipping Dice/Hausdorff for {pred_path.name}: pred shape {tuple(pred_mask.shape)} "
+                f"!= label shape {tuple(label_mask.shape)}. Resample to a common space before computing metrics.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
         d, h = compute_metrics(pred_mask, label_mask)
         metrics.append((pred_path.name, d, h))
 
@@ -611,10 +616,16 @@ def run_inference(
                     pred_mask = torch.as_tensor(pred_arr > 0.5)
                     label_mask = torch.as_tensor(label_np > 0.5)
                     if pred_mask.shape != label_mask.shape:
-                        resize = Resize(spatial_size=pred_mask.shape, mode="nearest")
-                        label_mask = resize(label_mask.unsqueeze(0).unsqueeze(0))[0, 0]
-                    d, h = compute_metrics(pred_mask, label_mask)
-                    metrics.append((image_path.name, d, h))
+                        warnings.warn(
+                            f"Skipping Dice/Hausdorff for {image_path.name}: pred shape "
+                            f"{tuple(pred_mask.shape)} != label shape {tuple(label_mask.shape)}. "
+                            "Resample to a common space before computing metrics.",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
+                    else:
+                        d, h = compute_metrics(pred_mask, label_mask)
+                        metrics.append((image_path.name, d, h))
         except Exception as exc:
             if not skip_invalid_inputs:
                 raise

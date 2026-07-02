@@ -79,6 +79,8 @@ def validate_image(path: Path) -> Tuple[Dict[str, object], List[str]]:
     info["affine_determinant"] = det
     if det is None or det == 0.0:
         issues.append("image_affine_singular")
+    elif det < 0.0:
+        issues.append("image_affine_negative_determinant")
 
     try:
         info["has_nan"] = bool(np.isnan(data).any())

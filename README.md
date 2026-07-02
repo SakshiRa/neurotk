@@ -15,6 +15,11 @@ NeuroTK focuses on dataset quality assurance prior to downstream analysis. It pr
 
 NeuroTK does not modify scientific data.
 
+## Requirements
+- Python ≥ 3.8
+- Linux, macOS, or Windows
+- No GPU required for validation and preprocessing; GPU optional for inference
+
 ## Installation
 ```sh
 pip install neurotk

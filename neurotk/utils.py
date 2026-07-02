@@ -9,10 +9,11 @@ import numpy as np
 
 
 def nifti_stem(path_name: str) -> str:
-    """Return filename stem without NIfTI extensions."""
-    if path_name.endswith(".nii.gz"):
+    """Return filename stem without NIfTI extensions (case-insensitive extension matching)."""
+    lower = path_name.lower()
+    if lower.endswith(".nii.gz"):
         return path_name[:-7]
-    if path_name.endswith(".nii"):
+    if lower.endswith(".nii"):
         return path_name[:-4]
     return path_name.rsplit(".", 1)[0]
 

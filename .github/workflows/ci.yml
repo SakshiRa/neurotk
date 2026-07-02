@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: pip install -e .
+        run: pip install -e ".[inference]" pytest
       - name: Compile
         run: python -m compileall neurotk
       - name: CLI import
@@ -25,3 +25,5 @@ jobs:
           from neurotk.cli import main
           print("CLI import OK")
           EOF
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
