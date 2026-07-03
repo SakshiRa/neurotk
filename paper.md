@@ -107,6 +107,12 @@ The toolkit provides three interaction modes:
 - **Web UI**: a FastAPI-based web application for interactive use without
   command-line knowledge, supporting single-dataset upload and report generation
 
+Figure 1 illustrates the end-to-end architecture and processing pipeline,
+showing how each interaction mode feeds into the validation, optional
+standardization, optional inference, and evaluation stages.
+
+![NeuroTK architecture and processing pipeline.](neurotk_architecture.png)
+
 A Dockerfile is provided for containerized deployment. Installation requires
 only `pip install neurotk`; inference extras are opt-in via
 `pip install neurotk[inference]`.
