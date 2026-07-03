@@ -11,17 +11,17 @@ flowchart LR
 
     D --> E{Standardize?}
 
-    E -->|optional| F[Dataset Standardization\norientation normalization\nvoxel spacing resampling]
-    F --> G[Processing Log\nJSON — transformations applied]
+    E -->|Optional| F[Dataset Standardization\norientation normalization\nvoxel spacing resampling]
+    F --> G[JSON Processing Log\nApplied transformations]
 
-    E -->|skip| H{Run Inference?}
+    E -->|Skip| H{Run Inference?}
 
     G --> H
 
-    H -->|optional| I[MONAI Bundle Inference\nAutomatic Bundle Download\nskip-invalid-inputs]
+    H -->|Optional| I[MONAI Bundle Inference\nAutomatic bundle download\nSkip invalid inputs]
     I --> J[Evaluation & Quantification\nDice · lesion volumes mL\ncohort statistics · histograms]
 
-    H -->|skip| K[Outputs\nCSV summaries · Histograms\nJSON metrics]
+    H -->|Skip| K[Outputs\nCSV Reports · JSON Metrics\nHistograms]
 
     J --> K
 
