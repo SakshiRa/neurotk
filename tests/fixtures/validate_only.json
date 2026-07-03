@@ -1,0 +1,27 @@
+{
+  "run_mode": "validate",
+  "summary": {
+    "scope": "original_inputs",
+    "num_images": 2,
+    "num_labels": 2,
+    "files_clean": 1,
+    "files_with_issues": 1,
+    "orientation_modal": "RAS",
+    "spacing_min": [1.0, 1.0, 1.0],
+    "spacing_max": [1.0, 1.0, 1.0]
+  },
+  "files": {
+    "CASE_001.nii.gz": {
+      "shape": [64, 64, 32],
+      "spacing": [1.0, 1.0, 1.0],
+      "orientation": "RAS",
+      "issues": []
+    },
+    "CASE_002.nii.gz": {
+      "shape": [64, 64, 32],
+      "spacing": [2.0, 2.0, 2.0],
+      "orientation": "LPS",
+      "issues": ["spacing_inconsistent"]
+    }
+  }
+}

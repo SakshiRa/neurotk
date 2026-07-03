@@ -1,4 +1,5 @@
 [![DOI](https://zenodo.org/badge/1134680274.svg)](https://doi.org/10.5281/zenodo.18252017)
+[![CI](https://github.com/SakshiRa/neurotk/actions/workflows/ci.yml/badge.svg)](https://github.com/SakshiRa/neurotk/actions/workflows/ci.yml)
 
 
 # NeuroTK: Dataset Validation for Neurology Brain Imaging
@@ -307,6 +308,13 @@ for validation-only users.
 ## Web UI
 The FastAPI app in `webapp/` is the primary landing page and execution interface. The older `site/` Next.js prototype
 is deprecated and should not be used for deployment.
+
+## Support
+
+- **Bug reports**: use the [Bug Report template](https://github.com/SakshiRa/neurotk/issues/new?template=bug_report.md) on GitHub Issues.
+- **Feature requests**: use the [Feature Request template](https://github.com/SakshiRa/neurotk/issues/new?template=feature_request.md).
+- **Contributing**: see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and PR guidelines.
+- **Maintainer**: Sakshi Rathi (rathi036@umn.edu). Issues are monitored regularly; bug reports are typically acknowledged within one week.
 
 ## Citation
 If you use NeuroTK in your research, please cite it as follows:

@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: University of Minnesota, United States
     index: 1
-date: 16 January 2026
+date: 02 July 2026
 bibliography: paper.bib
 ---
 
@@ -59,11 +59,11 @@ confidence.
 # State of the field
 
 Several widely used medical imaging frameworks provide utilities for data
-loading and preprocessing, including MONAI, nnU-Net, and SimpleITK-based
-pipelines. These tools are primarily optimized for downstream modeling workflows
-and typically embed validation logic implicitly within preprocessing or training
-code. As a result, dataset quality checks are often ad hoc, undocumented, or
-tightly coupled to specific modeling assumptions.
+loading and preprocessing, including MONAI [@monai], nnU-Net [@isensee2021nnu],
+and SimpleITK-based pipelines [@simpleitk]. These tools are primarily optimized
+for downstream modeling workflows and typically embed validation logic implicitly
+within preprocessing or training code. As a result, dataset quality checks are
+often ad hoc, undocumented, or tightly coupled to specific modeling assumptions.
 
 NeuroTK adopts a complementary approach by decoupling dataset validation from
 modeling and task-specific preprocessing. Rather than extending an existing
@@ -80,7 +80,8 @@ provide.
 NeuroTK is designed around three core principles: deterministic behavior,
 explicit separation of concerns, and auditability. The toolkit provides a command
 line interface and Python API that operate directly on directories of NIfTI
-files, without modifying original data.
+files [@nifti], without modifying original data. File I/O relies on NiBabel
+[@nibabel] for robust cross-platform NIfTI support.
 
 The validation component inspects image and label files for readability,
 geometry, voxel spacing, orientation, affine consistency, and annotation
@@ -91,6 +92,160 @@ voxel spacing resampling, using deterministic methods and recording all
 transformations in machine-readable reports. NeuroTK deliberately avoids
 heuristic preprocessing, modality-specific assumptions, and learning-based
 methods in order to preserve interpretability and reproducibility.
+
+NeuroTK also supports inference via external MONAI bundles [@monai], including
+automatic download from Hugging Face Hub. Post-inference utilities include Dice
+score computation, lesion volume quantification (mL), cohort stratification
+statistics, and histogram generation. These are accessible via the CLI or
+Python API and are designed to integrate into automated research pipelines.
+
+The toolkit provides three interaction modes:
+
+- **CLI**: the primary interface for batch and pipeline use (`neurotk validate`,
+  `neurotk preprocess`, `neurotk infer`, `neurotk dice`, `neurotk lesion-volume`)
+- **Python API**: all CLI commands are importable functions for programmatic use
+- **Web UI**: a FastAPI-based web application for interactive use without
+  command-line knowledge, supporting single-dataset upload and report generation
+
+A Dockerfile is provided for containerized deployment. Installation requires
+only `pip install neurotk`; inference extras are opt-in via
+`pip install neurotk[inference]`.
+
+# Quality control
+
+NeuroTK includes a test suite of 13 modules containing over 60 test cases
+covering all major subsystems: validation, preprocessing, inference, lesion
+volume analysis, cohort statistics, CLI behaviour, HTML report generation, and
+web application commands. Tests are implemented using pytest and use synthetic
+NIfTI fixtures generated at test time, ensuring reproducibility across
+environments without requiring external data.
+
+A continuous integration pipeline (GitHub Actions) runs the full test suite on
+every push and pull request across Python 3.8, 3.9, 3.10, and 3.11 on Ubuntu.
+CI status is reflected by the repository badge. Regression test fixtures
+(`tests/fixtures/`) pin expected JSON report schemas so that format changes are
+detected automatically.
+
+Key test coverage areas include:
+
+- **Validation correctness**: verified against datasets with missing labels,
+  corrupt NIfTI files, spacing inconsistencies, and orientation mismatches
+- **Preprocessing determinism**: outputs verified to match expected spacing and
+  orientation for fixed inputs
+- **Inference pipeline**: MONAI bundle loading, skipping of invalid inputs, and
+  Dice computation verified with synthetic predictions and labels
+- **Report schema regression**: JSON structure and HTML output verified for
+  required fields via fixture comparison
+- **CLI contracts**: all CLI entry points tested for correct exit codes and
+  output file creation
+
+The software has been exercised on real CT imaging cohorts from the NIH-funded
+PROTECT III traumatic brain injury study, where it was used to validate and
+standardize datasets prior to deep learning model development [@rathi2026tbi].
+Sample input and output data are included in the repository under `sample_data/`.
+
+# Availability
+
+- **Repository**: https://github.com/SakshiRa/neurotk
+- **Archive**: https://doi.org/10.5281/zenodo.18252017
+- **License**: Apache 2.0
+- **Package**: `pip install neurotk` (PyPI)
+
+# Reuse
+
+NeuroTK is designed for reuse across a range of neuroimaging workflows. The
+toolkit is installable via `pip install neurotk` (inference extras:
+`pip install neurotk[inference]`), requires Python >= 3.8, and runs on Linux,
+macOS, and Windows without GPU for validation and preprocessing tasks.
+
+## Concrete reuse scenarios
+
+**Dataset release auditing**: researchers preparing a public imaging dataset can
+run `neurotk validate` to generate a JSON/HTML quality report to include as
+supplementary material, documenting spacing, orientation, and annotation
+completeness for reviewers.
+
+**Pre-training data checks**: prior to training a segmentation model with MONAI
+[@monai] or nnU-Net [@isensee2021nnu], users can run `neurotk validate` to
+detect geometry inconsistencies that would silently degrade training.
+
+**Post-inference analysis**: after running segmentation with a tool such as
+BLAST-CT [@monteiro2020], `neurotk lesion-volume` quantifies lesion burden
+per case and generates cohort-level statistics and histograms.
+
+**Benchmarking pipelines**: challenge organizers can use NeuroTK to validate
+that submitted datasets meet geometric consistency requirements before
+evaluation.
+
+## Python API usage
+
+All CLI commands are importable as Python functions, enabling programmatic
+integration into larger pipelines:
+
+```python
+from neurotk.validate import validate_dataset
+from neurotk.preprocess import preprocess_dataset
+
+report = validate_dataset(images_dir="data/images", labels_dir="data/labels")
+print(f"Files with issues: {report['summary']['files_with_issues']}")
+
+preprocess_dataset(
+    images_dir="data/images",
+    output_dir="data/preprocessed",
+    target_spacing=(1.0, 1.0, 1.0),
+    target_orientation="RAS",
+)
+```
+
+## Continuous integration example
+
+The CLI is designed for headless use in CI pipelines. The following GitHub
+Actions step validates new data contributions before merging:
+
+```yaml
+- name: Validate dataset
+  run: |
+    pip install neurotk
+    neurotk validate --images data/images --out report.json
+    python -c "
+    import json, sys
+    r = json.load(open('report.json'))
+    if r['summary']['files_with_issues'] > 0:
+        print('Dataset has issues'); sys.exit(1)
+    "
+```
+
+## Batch processing
+
+For cohorts with hundreds of scans, NeuroTK supports batch inference via input
+lists:
+
+```sh
+find data/images -name '*.nii.gz' > inputs.txt
+neurotk infer --input-list inputs.txt --output-dir predictions/ --device cuda
+neurotk lesion-volume --preds predictions/ --output volumes.csv \
+    --summary-output summary.csv --histogram hist.png
+```
+
+## Extension
+
+NeuroTK's validation and preprocessing components are importable as a Python
+library. Researchers can extend the validation schema by adding custom check
+functions to the validation pipeline. The JSON report format is documented and
+stable across minor versions, enabling downstream tooling to parse and aggregate
+reports across studies.
+
+# Support
+
+Support for the software is provided via the following channels:
+
+- **GitHub Issues**: https://github.com/SakshiRa/neurotk/issues — bug reports
+  and feature requests are tracked here using provided issue templates.
+- **Contributing guide**: `CONTRIBUTING.md` documents how to set up a
+  development environment, run the test suite, and submit pull requests.
+- **Maintainer contact**: Sakshi Rathi (rathi036@umn.edu) actively monitors
+  issues and pull requests. Bug reports are typically acknowledged within one
+  week.
 
 # Research impact statement
 
