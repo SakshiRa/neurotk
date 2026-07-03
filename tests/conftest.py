@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import importlib
 import sys
 from typing import Tuple
+
+# Skip inference tests when torch is not installed (e.g. CI without GPU deps).
+if importlib.util.find_spec("torch") is None:
+    collect_ignore_glob = ["test_inference_*.py"]
 
 import nibabel as nib
 import numpy as np
