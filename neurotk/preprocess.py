@@ -153,6 +153,41 @@ def preprocess_dataset(
     dry_run: bool = False,
     copy_metadata: bool = False,
 ) -> Dict[str, object]:
+    """Standardize a NIfTI dataset to a target spacing and orientation.
+
+    Applies deterministic orientation normalization and voxel spacing
+    resampling to every image (and paired label) in ``images_dir``.
+    All applied transforms are recorded in a machine-readable
+    ``preprocess_report.json`` written to ``out_dir``.
+
+    :param images_dir: Directory containing source NIfTI image files.
+    :param labels_dir: Directory containing paired NIfTI label files,
+                       or None to process images only.
+    :param out_dir: Output directory. Processed files are written to
+                    ``out_dir/images/`` and ``out_dir/labels/``.
+    :param spacing: Target voxel spacing as (x, y, z) tuple in mm.
+    :param orientation: Target orientation code, e.g. ``"RAS"`` or
+                        ``"LPS"``. Must be a 3-letter axis code.
+    :param dry_run: If True, validate and plan transforms without writing
+                    any output files.
+    :param copy_metadata: If True, copy the original NIfTI header
+                          metadata to processed files.
+    :returns: Report dict with keys ``processed_files`` and ``files``.
+
+    Example::
+
+        from pathlib import Path
+        from neurotk.preprocess import preprocess_dataset
+
+        report = preprocess_dataset(
+            images_dir=Path("data/images"),
+            labels_dir=Path("data/labels"),
+            out_dir=Path("data/preprocessed"),
+            spacing=(1.0, 1.0, 1.0),
+            orientation="RAS",
+        )
+        print(f"Processed {len(report['processed_files'])} files")
+    """
     if not images_dir.exists() or not images_dir.is_dir():
         raise SystemExit(f"Images directory not found: {images_dir}")
 

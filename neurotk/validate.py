@@ -1,14 +1,15 @@
-"""Per-file validation logic for NIfTI datasets."""
+"""Per-file and dataset-level validation logic for NIfTI datasets."""
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from .io import load_nifti
-from .utils import orientation_codes, safe_stats, spacing_from_header, to_list
+from .utils import nifti_stem, orientation_codes, safe_stats, spacing_from_header, to_list
 
 
 def _image_info_template(path: Path) -> Dict[str, object]:
@@ -42,7 +43,15 @@ def _label_info_template(path: Optional[Path]) -> Dict[str, object]:
 
 
 def validate_image(path: Path) -> Tuple[Dict[str, object], List[str]]:
-    """Validate a single image file."""
+    """Validate a single NIfTI image file.
+
+    Checks readability, dimensionality, voxel spacing, orientation,
+    affine matrix integrity, and presence of NaN/Inf values.
+
+    :param path: Path to a NIfTI file (.nii or .nii.gz).
+    :returns: Tuple of (info dict, list of issue strings).
+              Issues are empty when the file passes all checks.
+    """
     info = _image_info_template(path)
     issues: List[str] = []
     try:
@@ -106,7 +115,17 @@ def validate_image(path: Path) -> Tuple[Dict[str, object], List[str]]:
 def validate_label(
     path: Optional[Path], image_shape: Optional[Tuple[int, ...]]
 ) -> Tuple[Dict[str, object], List[str]]:
-    """Validate a single label file."""
+    """Validate a single NIfTI label file.
+
+    Checks readability, dimensionality, shape consistency with the
+    paired image, integer-valued voxels, and non-empty mask.
+
+    :param path: Path to a NIfTI label file, or None if no label exists.
+    :param image_shape: Shape of the paired image for shape-match check,
+                        or None to skip the check.
+    :returns: Tuple of (info dict, list of issue strings).
+              Issues are empty when the file passes all checks.
+    """
     info = _label_info_template(path)
     issues: List[str] = []
     if path is None:
@@ -159,3 +178,110 @@ def validate_label(
         issues.append("label_unique_values_failed")
 
     return info, issues
+
+
+def _list_nifti(directory: Path) -> List[Path]:
+    return sorted(
+        p for p in directory.rglob("*")
+        if p.is_file() and (p.name.endswith(".nii") or p.name.endswith(".nii.gz"))
+    )
+
+
+def validate_dataset(
+    images_dir: str | Path,
+    labels_dir: str | Path | None = None,
+    max_samples: int | None = None,
+) -> Dict[str, object]:
+    """Validate a directory of NIfTI images (and optionally labels).
+
+    Runs per-file checks on every image and paired label, then aggregates
+    a cohort-level summary covering spacing consistency, orientation
+    uniformity, missing annotations, and file-level issues.
+
+    :param images_dir: Path to directory containing NIfTI image files.
+    :param labels_dir: Path to directory containing NIfTI label files,
+                       or None to skip label validation.
+    :param max_samples: Limit validation to the first N images (useful
+                        for quick sanity checks on large cohorts).
+    :returns: Report dict with keys ``summary``, ``files``, and ``meta``.
+              ``summary["files_with_issues"]`` is 0 when all files pass.
+
+    Example::
+
+        from neurotk.validate import validate_dataset
+
+        report = validate_dataset("data/images", "data/labels")
+        print(f"Files with issues: {report['summary']['files_with_issues']}")
+    """
+    from .report import build_summary
+
+    images_dir = Path(images_dir)
+    labels_dir = Path(labels_dir) if labels_dir is not None else None
+
+    image_files = _list_nifti(images_dir)
+    if max_samples is not None:
+        image_files = image_files[:max(max_samples, 0)]
+
+    label_files: List[Path] = []
+    if labels_dir is not None:
+        label_files = _list_nifti(labels_dir)
+    label_index = {nifti_stem(p.name): p for p in label_files}
+
+    files_report: Dict[str, Dict[str, object]] = {}
+    shapes: List[Tuple[int, int, int]] = []
+    spacings: List[Tuple[float, float, float]] = []
+    orientations: List[Tuple[str, str, str]] = []
+    missing_labels: List[str] = []
+
+    for image_path in image_files:
+        image_info, image_issues = validate_image(image_path)
+
+        shape = image_info.get("shape")
+        image_shape: Optional[Tuple[int, ...]] = None
+        if isinstance(shape, list) and len(shape) == 3:
+            image_shape = tuple(shape)
+            shapes.append(image_shape)
+        spacing = image_info.get("spacing")
+        if isinstance(spacing, list) and len(spacing) == 3:
+            spacings.append(tuple(float(x) for x in spacing))
+        orientation = image_info.get("orientation")
+        if isinstance(orientation, list) and len(orientation) == 3:
+            orientations.append(tuple(str(x) for x in orientation))
+
+        label_info: Optional[Dict[str, object]] = None
+        label_issues: List[str] = []
+        if labels_dir is not None:
+            label_path = label_index.get(nifti_stem(image_path.name))
+            if label_path is None:
+                missing_labels.append(image_path.name)
+            label_info, label_issues = validate_label(label_path, image_shape)
+
+        files_report[image_path.name] = {
+            "image": image_info,
+            "label": label_info,
+            "issues": image_issues + label_issues,
+        }
+
+    label_stems = {nifti_stem(p.name) for p in label_files}
+    image_stems = {nifti_stem(p.name) for p in image_files}
+    missing_images = sorted(label_stems - image_stems)
+    files_with_issues = sum(1 for v in files_report.values() if v.get("issues"))
+
+    summary = build_summary(
+        image_count=len(image_files),
+        label_count=len(label_files),
+        missing_labels=missing_labels,
+        missing_images=list(missing_images),
+        shapes=shapes,
+        spacings=spacings,
+        orientations=orientations,
+        files_with_issues=files_with_issues,
+    )
+
+    return {
+        "summary": {"scope": "original_inputs", **summary},
+        "files": files_report,
+        "meta": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    }
