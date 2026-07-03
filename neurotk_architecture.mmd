@@ -1,0 +1,38 @@
+flowchart LR
+    subgraph UI[User Interface]
+        A1[CLI] & A2[Python API] & A3[Web UI]
+    end
+
+    UI --> B[NIfTI Dataset\nimages/ + labels/]
+
+    B --> C[Dataset Validation\ngeometry · spacing · orientation\nlabels · metadata · readability]
+
+    C --> D[Validation Report\nJSON & HTML]
+
+    D --> E{Standardize?}
+
+    E -->|optional| F[Dataset Standardization\norientation normalization\nvoxel spacing resampling]
+    F --> G[Processing Log\nJSON — transformations applied]
+
+    E -->|skip| H{Run Inference?}
+
+    G --> H
+
+    H -->|optional| I[MONAI Bundle Inference\nAutomatic Bundle Download\nskip-invalid-inputs]
+    I --> J[Evaluation & Quantification\nDice · lesion volumes mL\ncohort statistics · histograms]
+
+    H -->|skip| K[Outputs\nCSV summaries · Histograms\nJSON metrics]
+
+    J --> K
+
+    style UI fill:#2C3E50,color:#fff,stroke:#fff
+    style B fill:#5D6D7E,color:#fff,stroke:#fff
+    style C fill:#1A6B8A,color:#fff,stroke:#fff,padding:20px
+    style D fill:#2E86AB,color:#fff,stroke:#fff
+    style E fill:#f0f0f0,color:#333,stroke:#999
+    style F fill:#E67E22,color:#fff,stroke:#fff
+    style G fill:#E67E22,color:#fff,stroke:#fff
+    style H fill:#f0f0f0,color:#333,stroke:#999
+    style I fill:#7D3C98,color:#fff,stroke:#fff
+    style J fill:#1E8449,color:#fff,stroke:#fff
+    style K fill:#117A65,color:#fff,stroke:#fff
