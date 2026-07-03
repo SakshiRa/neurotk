@@ -11,13 +11,10 @@ WORKDIR /app
 
 COPY pyproject.toml README.md /app/
 COPY neurotk /app/neurotk
-COPY webapp /app/webapp
 
 RUN python -m pip install --upgrade pip \
     && pip install .
 
-WORKDIR /app/webapp
-
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uvicorn", "neurotk.web.app:app", "--host", "0.0.0.0", "--port", "8000"]
