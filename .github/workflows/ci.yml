@@ -25,3 +25,14 @@ jobs:
           from neurotk.cli import main
           print("CLI import OK")
           EOF
+      - name: Install test dependencies
+        run: pip install pytest
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t neurotk:test .
