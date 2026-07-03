@@ -19,7 +19,7 @@ jobs:
       - name: Build draft PDF
         uses: openjournals/openjournals-draft-action@master
         with:
-          journal: joss
+          journal: jors
           paper-path: paper.md
 
       - name: Upload PDF artifact
